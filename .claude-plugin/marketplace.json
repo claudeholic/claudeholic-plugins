@@ -1,0 +1,15 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "claudeholic-plugins",
+  "displayName": "Claudeholic Plugins",
+  "description": "A personal collection of stable plugins that work with Claude Code, maintained by claudeholic.",
+  "version": "1.0.0",
+  "owner": {
+    "name": "claudeholic",
+    "url": "https://github.com/claudeholic"
+  },
+  "metadata": {
+    "pluginRoot": "./plugins"
+  },
+  "plugins": []
+}
