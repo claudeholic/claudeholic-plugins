@@ -11,5 +11,15 @@
   "metadata": {
     "pluginRoot": "./plugins"
   },
-  "plugins": []
+  "plugins": [
+    {
+      "name": "chrome-shared",
+      "source": "./plugins/chrome-shared",
+      "description": "Shared Chrome automation: one browser instance for all Claude Code sessions, lazy launch, multiplexed engine, numbered tabs, no automation markers. Linux only.",
+      "category": "development",
+      "author": {
+        "name": "Michal Dzwoniarski"
+      }
+    }
+  ]
 }

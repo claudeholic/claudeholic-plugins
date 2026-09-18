@@ -1,21 +1,23 @@
 # Claudeholic Plugins
 
-A personal collection of stable plugins that work with [Claude Code](https://code.claude.com/docs).
+A personal collection of stable plugins that work with [Claude Code](https://code.claude.com/docs). Linux only.
 
 ## Installation
-
-Add this marketplace in Claude Code:
 
 ```
 /plugin marketplace add claudeholic/claudeholic-plugins
 ```
 
-Then browse and install plugins with:
+Then browse and install plugins:
 
 ```
 /plugin
 ```
 
-## Plugins
+## Available plugins
 
-No plugins published yet — coming soon.
+- **[chrome-shared](plugins/chrome-shared/)** — shared Chrome automation: one browser, many sessions, lazy launch, multiplexed engine, numbered tabs.
+
+## License
+
+Each plugin has its own license — see the plugin directory for details.

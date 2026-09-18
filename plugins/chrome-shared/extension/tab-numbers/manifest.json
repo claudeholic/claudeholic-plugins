@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Tab Numbers (chrome-shared)",
+  "version": "1.0.0",
+  "description": "Shows a stable [N] number in every tab title so humans and Claude sessions can refer to the same tab.",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*", "file:///*"],
+      "js": ["content.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "permissions": ["storage", "tabs"],
+  "incognito": "spanning"
+}

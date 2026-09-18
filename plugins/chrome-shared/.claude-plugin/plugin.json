@@ -1,0 +1,19 @@
+{
+  "name": "chrome-shared",
+  "version": "1.5.2",
+  "description": "Shared Chrome automation for Claude Code: one browser instance shared by all sessions (CDP port 9226), lazy launch on first use, window-per-session via isolated contexts, and user-visible tab numbers ([N] in tab titles) as a shared reference between the user and Claude. Launches Chrome without automation flags. Bundles debugging skills adapted from ChromeDevTools/chrome-devtools-mcp (Apache-2.0).",
+  "author": {
+    "name": "Michal Dzwoniarski",
+    "email": "michal@dzwon.net"
+  },
+  "mcpServers": {
+    "browser": {
+      "command": "${CLAUDE_PLUGIN_ROOT}/bin/chrome-shared-mcp",
+      "args": [],
+      "env": {
+        "CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS": "1",
+        "CHROME_DEVTOOLS_MCP_NO_UPDATE_CHECKS": "1"
+      }
+    }
+  }
+}

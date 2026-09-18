@@ -1,0 +1,199 @@
+#!/bin/bash
+# chrome-shared MCP wrapper (one shared Chrome, many Claude sessions).
+#
+# Does NOT start Chrome when a session starts. It only makes sure the
+# lazy proxy (port 9227) is running; that proxy boots the shared Chrome
+# (port 9226) on the first real browser-tool call.
+#
+# The MCP engine (chrome-devtools-mcp) is installed ONCE into
+# ~/.cache/chrome-shared/engine/<version> and launched directly with node,
+# so no resident `npm exec` process lingers for the whole session and the
+# engine version cannot silently change mid-flight. A detached background
+# job keeps the installed engine up to date for the next session.
+#
+# IMPORTANT: stdin/stdout of this script are the MCP channel. Nothing but
+# the engine itself may ever write there — every helper below logs to
+# $LOG or /dev/null.
+
+set -u
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROXY_PORT="${CS_PROXY_PORT:-9227}"
+
+# Opt out of Google's data collection. Belt and braces: the same two
+# variables are also declared in .claude-plugin/plugin.json, so the engine
+# stays quiet even if it is started outside this wrapper.
+#   NO_USAGE_STATISTICS - no telemetry is sent to Google
+#   NO_UPDATE_CHECKS    - no background update-check watchdog process
+export CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS=1
+export CHROME_DEVTOOLS_MCP_NO_UPDATE_CHECKS=1
+
+PKG="chrome-devtools-mcp"
+ENTRY="node_modules/${PKG}/build/src/bin/chrome-devtools-mcp.js"
+CACHE_DIR="${HOME}/.cache/chrome-shared"
+ENGINE_DIR="${CACHE_DIR}/engine"
+CURRENT="${ENGINE_DIR}/current"
+LOG="${CACHE_DIR}/update.log"
+LOCK="${CACHE_DIR}/install.lock"
+STAMP="${CACHE_DIR}/last-check"
+# How often the background job asks the npm registry for a newer engine.
+CHECK_INTERVAL="${CS_UPDATE_INTERVAL:-21600}"  # seconds (6 h)
+
+mkdir -p "$ENGINE_DIR" "${HOME}/.cache/chrome-devtools-mcp" 2>/dev/null
+
+log() {
+  printf '%s %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$*" >>"$LOG" 2>/dev/null
+}
+
+# Latest published version, straight from the npm registry. Plain node fetch,
+# no curl dependency; prints nothing at all when offline or too slow.
+latest_version() {
+  node -e '
+    fetch("https://registry.npmjs.org/'"$PKG"'/latest", {signal: AbortSignal.timeout(10000)})
+      .then(r => r.json())
+      .then(d => { if (typeof d.version === "string") console.log(d.version); })
+      .catch(() => {});
+  ' 2>/dev/null | head -n1
+}
+
+installed_version() {
+  # Relative symlink target, e.g. "1.9.0"; empty when nothing is installed.
+  readlink "$CURRENT" 2>/dev/null
+}
+
+# Single writer for the engine directory: concurrent sessions must not run
+# npm install over each other. A stale lock (crashed installer) is reclaimed
+# after 15 minutes. $1 = how many seconds to wait before giving up.
+acquire_lock() {
+  local waited=0 limit="${1:-0}"
+  while ! mkdir "$LOCK" 2>/dev/null; do
+    if [ -d "$LOCK" ] && [ -z "$(find "$LOCK" -maxdepth 0 -mmin -15 2>/dev/null)" ]; then
+      log "reclaiming stale install lock"
+      rm -rf "$LOCK" 2>/dev/null
+      mkdir "$LOCK" 2>/dev/null && return 0
+    fi
+    [ "$waited" -ge "$limit" ] && return 1
+    sleep 1
+    waited=$((waited + 1))
+  done
+  return 0
+}
+
+release_lock() { rm -rf "$LOCK" 2>/dev/null; }
+
+# Install $1 into engine/$1. Caller must hold the lock.
+install_version() {
+  local version="$1" dir="${ENGINE_DIR}/$1"
+  rm -rf "$dir" 2>/dev/null
+  mkdir -p "$dir" 2>/dev/null || return 1
+  printf '{"name":"chrome-shared-engine","private":true}\n' >"${dir}/package.json" 2>/dev/null || return 1
+  npm install --prefix "$dir" --no-audit --no-fund --loglevel=error \
+    "${PKG}@${version}" >>"$LOG" 2>&1 || { rm -rf "$dir" 2>/dev/null; return 1; }
+  [ -f "${dir}/${ENTRY}" ] || { rm -rf "$dir" 2>/dev/null; return 1; }
+  return 0
+}
+
+# Point engine/current at $1. The link is relative and swapped by rename, so
+# a session starting at this very moment sees either the old or the new
+# version, never a missing one. Servers already running are unaffected: node
+# resolved the real path at startup.
+switch_current() {
+  local version="$1" tmp="${ENGINE_DIR}/.current.$$"
+  ln -sfn "$version" "$tmp" 2>/dev/null || return 1
+  mv -Tf "$tmp" "$CURRENT" 2>/dev/null || { rm -f "$tmp" 2>/dev/null; return 1; }
+  return 0
+}
+
+# Keep the current version and one previous one; drop everything older.
+prune_versions() {
+  local keep_current="$1" keep_previous="$2" dir name
+  for dir in "$ENGINE_DIR"/*/; do
+    [ -d "$dir" ] || continue
+    name="$(basename "$dir")"
+    case "$name" in
+      current | "$keep_current" | "$keep_previous") continue ;;
+    esac
+    rm -rf "$dir" 2>/dev/null && log "removed old engine ${name}"
+  done
+}
+
+# Detached background worker: check the registry, install a newer engine,
+# flip the symlink, prune. Runs with stdout/stderr already redirected to the
+# log by the caller, so it can never touch the MCP channel.
+update_worker() {
+  local latest current
+  latest="$(latest_version)"
+  [ -n "$latest" ] || { log "update check failed (offline?)"; return 0; }
+  touch "$STAMP" 2>/dev/null
+  current="$(installed_version)"
+  [ "$latest" = "$current" ] && return 0
+  acquire_lock 0 || return 0
+  # Re-read under the lock: another session may have just installed it.
+  current="$(installed_version)"
+  if [ "$latest" != "$current" ]; then
+    if install_version "$latest" && switch_current "$latest"; then
+      log "updated ${current:-none} -> ${latest} (active from the next session)"
+      prune_versions "$latest" "$current"
+    else
+      log "update to ${latest} failed"
+    fi
+  fi
+  release_lock
+  return 0
+}
+
+# Re-entry point used by the background job (see the spawn below).
+if [ "${1:-}" = "--update-worker" ]; then
+  update_worker
+  exit 0
+fi
+
+# Start the lazy proxy unless it is already up (singleton: a second instance
+# exits by itself on a busy port). Detached, because it serves other sessions
+# too. The probe only connects without sending data — the proxy wakes Chrome
+# on the first byte, so probing is safe.
+if ! (exec 3<>/dev/tcp/127.0.0.1/$PROXY_PORT) 2>/dev/null; then
+  setsid node "$SCRIPT_DIR/chrome-lazy-proxy.mjs" \
+    >>"${HOME}/.cache/chrome-devtools-mcp/chrome-shared.log" 2>&1 </dev/null &
+fi
+
+# Bootstrap: no engine installed yet, so install one before serving anything.
+if [ ! -f "${CURRENT}/${ENTRY}" ]; then
+  if acquire_lock 300; then
+    if [ ! -f "${CURRENT}/${ENTRY}" ]; then
+      bootstrap_version="$(latest_version)"
+      if [ -n "$bootstrap_version" ] && install_version "$bootstrap_version" \
+        && switch_current "$bootstrap_version"; then
+        touch "$STAMP" 2>/dev/null
+        log "installed ${bootstrap_version} (bootstrap)"
+      else
+        log "bootstrap failed, falling back to npx for this session"
+      fi
+    fi
+    release_lock
+  else
+    log "bootstrap: another session holds the install lock"
+  fi
+fi
+
+# Still nothing usable (offline first run, npm broken) — fall back to the old
+# behaviour so the session is not left without a browser at all.
+if [ ! -f "${CURRENT}/${ENTRY}" ]; then
+  exec npx "${PKG}@latest" --browserUrl="http://127.0.0.1:${PROXY_PORT}"
+fi
+
+# Ask about a newer engine at most once per CHECK_INTERVAL, in a fully
+# detached process whose output goes to the log only.
+if [ -z "$(find "$STAMP" -maxdepth 0 -newermt "-${CHECK_INTERVAL} seconds" 2>/dev/null)" ]; then
+  setsid "${BASH_SOURCE[0]}" --update-worker >>"$LOG" 2>&1 </dev/null &
+fi
+
+ENTRY_PATH="${CURRENT}/${ENTRY}"
+MUX_STUB="${SCRIPT_DIR}/chrome-mux-stub.mjs"
+
+# Use multiplexer if available, fall back to direct engine
+if [ -f "$MUX_STUB" ]; then
+  exec node "$MUX_STUB" "$ENTRY_PATH" --browserUrl="http://127.0.0.1:${PROXY_PORT}"
+else
+  exec node "$ENTRY_PATH" --browserUrl="http://127.0.0.1:${PROXY_PORT}"
+fi
