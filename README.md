@@ -16,7 +16,7 @@ Then browse and install plugins:
 
 ## Available plugins
 
-- **[chrome-shared](plugins/chrome-shared/)** — shared Chrome automation: one browser, many sessions, lazy launch, multiplexed engine, numbered tabs.
+- **[chrome-shared](plugins/chrome-shared/)** — shared Chrome automation for Claude Code. Multi-session (one browser, many sessions), lazy launch, multiplexed engine, numbered tabs, no automation markers (no CAPTCHA triggers), lower RAM usage. Linux only.
 
 ## License
 
