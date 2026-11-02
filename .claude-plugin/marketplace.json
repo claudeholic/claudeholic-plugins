@@ -20,6 +20,15 @@
       "author": {
         "name": "Michal Dzwoniarski"
       }
+    },
+    {
+      "name": "linkedin-mcp",
+      "source": "./plugins/linkedin-mcp",
+      "description": "Unofficial wrapper that adds the LinkedIn MCP server (mcp-server-linkedin 4.23.3 by Daniel Sticker, Apache-2.0) to Claude Code via uvx. Profiles, companies, jobs, posts and messages through your own LinkedIn session. Not affiliated with LinkedIn.",
+      "category": "productivity",
+      "author": {
+        "name": "Michal Dzwoniarski"
+      }
     }
   ]
 }

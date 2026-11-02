@@ -1,0 +1,23 @@
+{
+  "name": "linkedin-mcp",
+  "version": "1.0.0",
+  "description": "Unofficial Claude Code plugin wrapper for the LinkedIn MCP server (mcp-server-linkedin 4.23.3 by Daniel Sticker, Apache-2.0, https://github.com/stickerdaniel/linkedin-mcp-server). Declares the server via uvx with a pinned, tested version; no server code is bundled. Not affiliated with the server's author or with LinkedIn.",
+  "author": {
+    "name": "Michal Dzwoniarski",
+    "email": "michal@dzwon.net"
+  },
+  "homepage": "https://github.com/claudeholic/claudeholic-plugins/tree/master/plugins/linkedin-mcp",
+  "repository": "https://github.com/claudeholic/claudeholic-plugins",
+  "license": "Apache-2.0",
+  "keywords": ["linkedin", "mcp", "jobs", "profiles"],
+  "mcpServers": {
+    "linkedin": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["mcp-server-linkedin@4.23.3"],
+      "env": {
+        "UV_HTTP_TIMEOUT": "300"
+      }
+    }
+  }
+}
