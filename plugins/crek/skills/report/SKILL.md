@@ -56,7 +56,8 @@ invent a different layout for it.
 
 Default batch: **10**. The user may ask for another size; use it for that batch.
 
-Every posting in the batch is open in the browser, with its tab number in the Tab column:
+Every posting in the batch is open in the browser, in the batch window (*The batch window* in
+reporting.md), with its tab number in the Tab column:
 
 0. **Only when both conditions in reporting.md hold:** the user has verified the current batch (you
    have their ruling on it, or an explicit "close" / "zamknij") **and** asks for the next. Otherwise leave the
@@ -65,19 +66,25 @@ Every posting in the batch is open in the browser, with its tab number in the Ta
    other tab this session or its agents left in that window (postings opened on request, research
    pages, finished forms, CV previews). Only the user's own tabs stay. After opening the new batch,
    list the window's tabs and close leftovers before printing.
-2. **Then open the new batch in the same window** the previous batch used. If that window no longer
-   exists, open one window and use it for the following batches. One batch = one window.
-   With chrome-shared, open postings in the shared context (no `isolatedContext`) so logins work;
+2. **Then open the new batch in the batch window** the previous batch used — right after a scan,
+   the scan's window with its anchor. If there is none (no scan in this session, or the window is
+   gone), open one with its own anchor (*The batch window* in reporting.md) and use it for the
+   following batches. One batch = one window, plus the user's regular window only for postings
+   that need their login (LinkedIn, Indeed and the like — shared context, no `isolatedContext`).
+   With chrome-shared, open the rest with the batch window's `isolatedContext` and
+   `background: true`, in table order;
    with raw CDP, focus a tab of that window before `Target.createTarget` so new tabs land there,
    and verify with `Browser.getWindowForTarget`.
 3. Make every page readable: dismiss cookie banners ("reject" / "only necessary" first, then
    close / X, "accept" only when there is nothing else) and overlays, reload once on a Cloudflare
    check (see *Presenting pages to the user* in the job-scan skill).
 4. Re-read the tab numbers right before printing (chrome-shared: the `[N]` title prefix via
-   `list_pages`). Tabs opened by other agents in between do not belong in the table.
+   `list_pages`; batch-window tabs: their position, *Tab numbers* in *The batch window*). Tabs
+   opened by other agents in between do not belong in the table.
 5. **Check every tab of the batch for closed postings, right before printing** —
-   `node "${CLAUDE_PLUGIN_ROOT}/assets/crek-closed-check.mjs" --tabs <all Tab numbers> --config
-   crek.config.json` (read only). A `closed` posting still `new` is not printed as a row: close
+   `node "${CLAUDE_PLUGIN_ROOT}/assets/crek-closed-check.mjs" --tabs <all [N] Tab numbers> --config
+   crek.config.json` (read only); batch-window rows, which have no `[N]`, as in *Checks* in *The
+   batch window*. A `closed` posting still `new` is not printed as a row: close
    its tab, record `status=closed` with the dated `note.closed` note and the evidence,
    fill its place with the next posting in sort order (open and check it too), and list the
    closed ones under the table in `report.section.closed`. `unknown` — and `open` judged by the
@@ -90,7 +97,7 @@ Every posting in the batch is open in the browser, with its tab number in the Ta
 6. **Resolve repeats of applied postings, alongside step 5** — every row with a `!` likely-same
    hit (or a possibly-same-client suspicion) on an entry `applied` / `interview` / `offer` /
    `declined` / `duplicate`: `node "${CLAUDE_PLUGIN_ROOT}/assets/crek-dedupe-check.mjs" --tabs <all
-   Tab numbers> --config crek.config.json --open-earlier` (read only; compares reference numbers
+   [N] Tab numbers> --config crek.config.json --open-earlier`, batch-window rows with `--ids` (read only; compares reference numbers
    in the bodies and where the "Apply" buttons lead). `duplicate` → record `status=duplicate,
    duplicate_of_id=<earlier>` with the dated note and evidence it prints; `in_pipeline` (same
    company + same normalised title as an entry applied to, not provably equal) → status stays,
@@ -105,8 +112,9 @@ Open only postings that have been checked and scored — an unscored posting is 
 
 ## After the user rules on a batch
 
-The user usually answers with tab numbers: EN "send 395, decline the rest" / PL "395 wyślij, reszta
-odrzuć".
+The user usually answers with tab numbers: EN "send 3, decline the rest" / PL "3 wyślij, reszta
+odrzuć" — a position in the batch window or an `[N]`, read against the printed table (*Tab numbers*
+in *The batch window*).
 
 - Postings to send → the `apply` skill, one application each; report results as they come.
   If a posting was already sent, say so instead of sending it twice.
@@ -129,6 +137,9 @@ odrzuć".
 - Then, **if the user asks** for the next batch, switch batches as described above. A ruling alone
   is not a request for the next batch, and a request without a ruling on the current one is a
   question to ask, not a reason to close its tabs.
+- **When the review is over** — the last batch is ruled on, the rest is set aside, or the user asks
+  to close — close the batch window's tabs and then its anchor (*When the window closes* in *The
+  batch window*, reporting.md).
 
 ## Do not
 

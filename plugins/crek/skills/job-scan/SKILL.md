@@ -169,10 +169,11 @@ match score is computed, and `../apply/references/reporting.md` for the shape of
 ## One browser window per scan
 
 In chrome-shared every new `isolatedContext` name opens a new Chrome window. A scan split across
-agents, each picking its own name, pops up one window per agent over the user's work — plus a
-LinkedIn login window when that part runs alongside them. Keep the whole scan in one window,
-whether it runs in agents or in this session alone. This is a rule for you to follow; nothing in
-the plugin enforces it.
+agents, each picking its own name, pops up one window per agent over the user's work. Keep the
+whole scan in one window, whether it runs in agents or in this session alone. The one exception is
+the login-board agent (point 4): it needs the user's logged-in profile, so its tabs open in the
+user's regular browser window — two windows in all, never one per agent. This is a rule for you to
+follow; nothing in the plugin enforces it.
 
 1. **Anchor tab first.** Before the first board and before any agent starts, the main session
    opens one tab: `new_page` with `url: "file://${CLAUDE_PLUGIN_ROOT}/assets/crek-anchor.html"`
@@ -186,10 +187,12 @@ the plugin enforces it.
    `isolatedContext` and `background: true`: the tab joins the anchor's window and does not come
    to the front. Never another context name — that is another window; and never a board page
    without `isolatedContext` — that is the user's own profile, where cookie consent is clicked in
-   their name. Work only on the `pageId`s you opened (the `new_page` reply marks the new tab
-   `[selected]`), and close your tabs when a board is done.
-3. **Give every agent the name and the rules.** Paste this into each agent's prompt, with the
-   context name and the anchor's `pageId` filled in:
+   their name (the login-board agent of point 4 is the one exception). Work only on the
+   `pageId`s you opened (the `new_page` reply marks the new tab `[selected]`), and close your tabs
+   when a board is done.
+3. **Give every other agent the name and the rules.** Paste this into the prompt of each scan
+   agent except the login-board one (point 4), with the context name and the anchor's `pageId`
+   filled in:
 
    > Browser: only the chrome-shared tools (`mcp__plugin_chrome-shared_browser__*`). Open tabs only
    > with `new_page` with `isolatedContext: "<crek-scan-…>"` and `background: true` — never another
@@ -197,22 +200,83 @@ the plugin enforces it.
    > `new_page` reply marks your new tab `[selected]`); every other tab belongs to someone else.
    > Close your tabs with `close_page` when you finish each board. Never close the anchor page
    > (CREK Anchor, page `<anchor pageId>`) — it holds the window. Do not open LinkedIn, Indeed or any
-   > board that needs a login, in the browser or through LinkedIn MCP tools — the main session does
+   > board that needs a login, in the browser or through LinkedIn MCP tools — another agent does
    > those. Do not start agents of your own.
 
    If the window disappears anyway (the anchor closed by mistake), the next `new_page` in the
    context opens a new one: that tab becomes the anchor. Do not open a second window next to it.
-4. **Boards that need a login: the main session, never in parallel with the agents.** LinkedIn,
-   Indeed and any other board where the scan needs the user's cookies or session are handled by
-   the main session in the default context (no `isolatedContext`, the shared logged-in profile)
-   or through the `linkedin-mcp` tools — before the agents start or after all of them have
-   finished, never while they run. If `linkedin-mcp` opens its login window (its session
-   expired), stop the LinkedIn part and ask the user to sign in; on a CAPTCHA, a security check
-   or a warning, stop and tell the user (*LinkedIn* below).
-5. **End of the scan.** When the last agent has reported (or your own last board is done), list
-   the pages, close any tab still open in the scan's context, then close the anchor — the window
-   goes away. The scan window is for reading, not for the user: the batch the user looks at is
-   opened afterwards in the shared context, as in *Presenting pages to the user*.
+4. **Boards that need a login: one agent of their own, in parallel with the others.** LinkedIn,
+   Indeed and any other board where the scan needs the user's cookies or session go to **one**
+   separate agent, the login-board agent, started together with the other scan agents (when the
+   rest of the scan runs in this session alone, start it alongside your own boards). It is the
+   only one that touches LinkedIn and Indeed in this scan: no other agent does, and the main
+   session leaves them alone while it runs. It works in the default context (no
+   `isolatedContext`, the shared logged-in profile), opening every tab with `new_page`
+   `background: true` — the tabs land in the user's regular window, not the scan's, without coming
+   to the front. That window holds the user's own tabs, so the agent works only on the `pageId`s it
+   opened and closes them itself. One posting at a time, with pauses; it may use the
+   `linkedin-mcp` tools when they are in the session (*LinkedIn* below).
+   - **A login page** — in chrome-shared, in the second browser, on any board (a logged-out
+     LinkedIn page, Indeed asking to sign in): when the config has that portal's login
+     (`credentials.<portal>`, e.g. `credentials.linkedin`, with a password), the agent signs in
+     with it, as in *LinkedIn* in `../apply/references/ats-playbook.md`. No stored password, or
+     the password does not get it in: a block (next point).
+   - **A block** — a CAPTCHA, a security check, a verification, a code sent by SMS or e-mail, a
+     warning, a login page it cannot get past: the agent never solves or clicks through it. If
+     the config has a second browser (`browser.cdp_fallback_port`, the fallback browser of
+     *Anti-bot / invisible reCAPTCHA escalation* in the ats-playbook) and that browser answers on
+     the port, the agent tries the same board again there, to see whether the check comes back:
+     same pace, its own tabs only, a login page there handled as above. No check there — it
+     finishes the board there. Blocked there too, or no second browser (no port in the config, or
+     nothing answering on it) — it stops that board, goes on with the next one and says so in its
+     report.
+   - **`linkedin-mcp` opens its login window** (its session expired): that window is the server's
+     own browser (a Patchright-managed Chromium). None of the agent's tools reach it — the
+     chrome-shared tools drive only the chrome-shared browser, the second browser is another
+     program, and the server has no tool for signing in — so the agent cannot sign in there, even
+     with `credentials.linkedin`. It leaves the window alone, stops using those tools, says so in
+     its report and goes on with LinkedIn in chrome-shared.
+
+   The agent never asks the user anything — that is the main session's job. When its report names
+   a stopped board, ask the user what to do (sign in or pass the check themselves, start the
+   second browser, or leave the board out), list the board in the scan report as not finished,
+   and resume it — in a new login-board agent with the same rules, or yourself — only on the
+   user's answer. Paste this into the login-board agent's prompt, with the boards, the port
+   (`browser.cdp_fallback_port`, or `none`) and the scan's context name filled in:
+
+   > Browser: the chrome-shared tools (`mcp__plugin_chrome-shared_browser__*`), the `linkedin-mcp`
+   > tools if they are in your tool list, and — only after a block, below — the second browser on
+   > port `<cdp_fallback_port | none>`. You are the only agent in this scan that touches these
+   > boards: `<LinkedIn, Indeed, …>`. Open tabs only with `new_page` with `background: true` and
+   > **without** `isolatedContext` — the shared logged-in profile; never the scan's context
+   > `<crek-scan-…>`. Your tabs open in the user's own window, next to the user's tabs: work only
+   > on the `pageId`s you opened (the `new_page` reply marks your new tab `[selected]`); never
+   > select, navigate, reload or close any other tab. Close your tabs with `close_page` as soon as
+   > you are done with them. One posting at a time, a few seconds' pause between pages, only the
+   > pages you need; no LinkedIn API, no scripts or bulk requests against any board. Cookie
+   > banners: "reject" / "only necessary" first, "accept" only when nothing else is offered —
+   > consent here is given in the user's name. A login page, in either browser: sign in with that
+   > portal's entry in `credentials` in `crek.config.json` (`credentials.linkedin` for LinkedIn)
+   > when it has a password; never copy the password into a command line, a prompt or your report.
+   > No stored password, or it does not get you in → a block. If `linkedin-mcp` opens its login
+   > window, leave it alone — your tools cannot reach that browser: stop using its tools, say so in
+   > your report, go on in chrome-shared. **A CAPTCHA, a security check, a verification, a code by
+   > SMS or e-mail, a warning or a login page you cannot pass is a block: never solve it, never
+   > click through it.** On a block, if a port is given and `http://127.0.0.1:<port>/json/version`
+   > answers, try that board again in the second browser over CDP, as crek's
+   > `skills/apply/references/ats-playbook.md` describes for the fallback browser (*Anti-bot*):
+   > `PUT /json/new?url=…`, read the text with `Runtime.evaluate`, type with `Input.insertText`
+   > (a script that reads the password from the config itself), close your tab with
+   > `/json/close/<id>`; only tabs you opened. No block there → finish the board there. Blocked
+   > there too, or no second browser → stop that board and go on with the next. Report the postings as asked and, for every board you stopped: what blocked
+   > it, on which page and when, whether the second browser was tried and what it showed, and
+   > which postings are left. Do not ask the user anything. Do not start agents of your own.
+
+5. **End of the scan.** When the last agent has reported, the login-board agent included (or your
+   own last board is done), list the pages and close every tab still open in the scan's context
+   **except the anchor**. The window stays: the batch the user looks at opens in it (*The batch
+   window* in `../apply/references/reporting.md`), and the anchor is closed only when the user is
+   done with the batches.
 
 ## Closed postings (`assets/crek-closed-check.mjs`)
 
@@ -267,12 +331,14 @@ CREK calls no LinkedIn API of its own. A LinkedIn posting is checked in one of t
   external Apply button opens the employer's form in a new tab: click it when you need the apply
   target (refs, `apply_url`), read the URL, close that tab.
 
-Either way it is the main session's part of the scan, never an agent's and never while scan
-agents run (*One browser window per scan* above). And either way: no scripted requests to LinkedIn, no bulk page loads — LinkedIn restricts accounts
-that look automated. Open only the postings you need, one at a time, with pauses between them.
-A logged-out page is handled as in *LinkedIn* in `../apply/references/ats-playbook.md`; on a
-CAPTCHA, a security check or a warning, stop and tell the user (never solve or click through it on
-your own).
+Either way, during a scan it is the login-board agent's part and no one else's (point 4 of *One
+browser window per scan* above); after the scan — the closed check before a batch — it is the main
+session's, with no scan agents running. And either way: no scripted requests to LinkedIn, no bulk
+page loads — LinkedIn restricts accounts that look automated. Open only the postings you need, one
+at a time, with pauses between them. A logged-out page is handled as in *LinkedIn* in
+`../apply/references/ats-playbook.md`; on a CAPTCHA, a security check or a warning, never solve or
+click through it on your own: in a scan the login-board agent retries that board in the second
+browser and otherwise reports it (point 4), outside a scan stop and tell the user.
 
 ## Reference numbers (`assets/crek-refs.mjs`)
 
@@ -379,14 +445,17 @@ no cookie banners, no login walls. Before reporting the tab list:
   "Odrzuć" / "Tylko niezbędne" first; when there is no such button, "close" / X; "accept" only
   when the banner offers nothing else (the shared profile is the user's — consent clicked there
   is consent given in their name). A page with a banner covering half the screen is not "open".
-- **LinkedIn and all other postings** — open pages in the shared browser context (no
-  `isolatedContext`), so the user's login sessions are available and all tabs land in one
-  window. An isolated context means a separate window with no cookies — the user ends up with
-  tabs scattered across windows and logged out of LinkedIn. There is no reason to isolate
-  pages that the user is going to read.
+- **Which window** — a batch opens in the batch window: the scan's window with its anchor, or a
+  window of its own when there is no scan window (*The batch window* in
+  `../apply/references/reporting.md`), so the user finds the batch in one place and not among
+  their own tabs. Postings that need the user's login to show — LinkedIn, Indeed and the like —
+  are the exception: they open in the shared browser context (no `isolatedContext`), where the
+  user is signed in. A batch-window tab has no cookies, so its consent banner comes back every
+  time: dismiss it as above.
 - **Any other overlay** (newsletter signup, app-install prompt, GDPR popup) — close it.
 
-The user navigates by the tab numbers you report. A tab that requires two clicks before the
+The user navigates by the tab numbers you report (positions in the batch window, `[N]` in the
+shared context — *The table* in reporting.md). A tab that requires two clicks before the
 content is visible is a tab that wastes their time.
 
 ## Watch-outs

@@ -55,12 +55,14 @@ The message when it is missing, in the user's language (Polish unless they wrote
   `/reload-plugins` — this keeps the conversation. A restart of Claude Code works too but starts
   the interview over (there is no config yet), so if they prefer a restart, suggest doing it after
   the interview.
-- **Signing in to LinkedIn for this server is the user's.** The server uses the user's own
+- **Signing in to LinkedIn for this server stays with the user.** The server uses the user's own
   LinkedIn session: on its first use it reuses a session from a local browser or opens a login
   window where the user signs in. The plugin's README (`installPath` from `claude plugin list
-  --json`, *Requirements*) shows how to prepare the session in advance in their own terminal. Never sign in for the user
-  there and never type a password into the server's login window — the LinkedIn password the next
-  question offers to store is for the chrome-shared browser only, never for this server — and do
+  --json`, *Requirements*) shows how to prepare the session in advance in their own terminal.
+  CREK signs in with a stored password wherever its tools reach the login page — the chrome-shared
+  browser and the fallback browser — but the server's login window is the server's own browser (a
+  Patchright-managed Chromium) that none of CREK's tools can drive, so the LinkedIn password the
+  next question offers to store cannot be used there: when that window opens, tell the user. Do
   not call the LinkedIn tools during the interview to "test" them. From the first use the rules
   in *LinkedIn* in `ats-playbook.md` apply: low volume, no bulk searches; on a CAPTCHA, a security
   check or a warning, stop and tell the user.

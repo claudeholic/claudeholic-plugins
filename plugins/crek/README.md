@@ -257,8 +257,9 @@ CREK drives a real browser on sites that do not all welcome automation. Read thi
 - **LinkedIn is strict about automation** and restricts or logs out accounts it suspects. CREK
   calls no LinkedIn API: its scripts only read the text of LinkedIn tabs that are already open
   and never open LinkedIn pages themselves. Claude reads LinkedIn in the browser one page at a
-  time, like a person, and stops at a CAPTCHA, a security check or a warning. Keep LinkedIn work
-  small.
+  time, like a person, and stops at a CAPTCHA, a security check or a warning (in a scan it first
+  tries that board once more in the fallback browser, if one is running, and then asks you). Keep
+  LinkedIn work small.
 - **The `linkedin-mcp` plugin** (optional) is a third-party LinkedIn tool that uses your LinkedIn
   session through its own browser automation. The same risk applies. Read its README before
   installing, and do not run it in parallel with other LinkedIn work.

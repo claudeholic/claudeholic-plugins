@@ -56,8 +56,11 @@ The columns mean the same in every language. Below they are named by their Engli
   `[21] Praca GenAI Engineer…` is `21`; in `list_pages` output `8: [21] …` it is `21`). It is **not**
   the MCP `pageId` (the leading `8:`) and **not** the tab's position in the window — the user can see
   neither, and both change. See chrome-shared's skill, section *Tabs numbered for the user*. Re-run
-  `list_pages` right before printing the table: numbers are only valid for tabs that still exist. If
-  the browser adds no prefix (e.g. Brave over raw CDP), give the page title instead of a number.
+  `list_pages` right before printing the table: numbers are only valid for tabs that still exist.
+  Tabs in the batch window (an `isolatedContext`) get no prefix: there the Tab is the tab's
+  position in that window, and a shared-context tab in the same table is written as in its title,
+  `[395]` (*The batch window* below). If the browser adds no prefix (e.g. Brave over raw CDP),
+  give the page title instead of a number.
 - **Posting** (`report.col.posting`) — `Company — Title`. Agency and end client both, when known: `Acme Talent — DevOps / SRE
   (Globex)`. Never reproduce gender-suffix legalese from the title.
 - **Rate** (`report.col.rate`) — as posted, in the posted unit, with the unit suffix from
@@ -123,11 +126,11 @@ size for this batch.
 - **Switching to the next batch, once both conditions hold, in this order:** first close every tab
   of the previous batch **and every other tab left in that window by this session or its agents**
   (postings opened on request, research pages, finished forms, CV previews) — only tabs the user
-  opened themselves stay; then open the new batch's tabs **in the same window** the previous batch
-  used (if that window is gone, open one window and keep using it for later batches). Then list the window's tabs: it must contain exactly the new batch (plus the user's own tabs);
+  opened themselves stay; then open the new batch's tabs **in the batch window** the previous batch
+  used (*The batch window* below; if that window is gone, open a new one and keep using it for later batches). Then list the window's tabs: it must contain exactly the new batch (plus the user's own tabs);
   close any leftover before printing. Never report "closed the previous batch" without this check.
   Then re-read the tab numbers and print the table. Never leave the old batch open next to the new one, and never
-  spread one batch over several windows — the user must see exactly the postings in the table, in
+  spread one batch over other windows (the one exception: postings that need the user's login, in their regular window — *The batch window*) — the user must see exactly the postings in the table, in
   one place. Keep the old tabs only if the user explicitly asks to.
 - **"Next 10" / "kolejne 10" means the next ten by the same sort order — nothing else.** Do not filter by track,
   topic or anything said earlier in the conversation, and do not reshuffle the list between batches.
@@ -139,6 +142,49 @@ size for this batch.
 - Show a batch only after its tabs have been checked for closed postings (next section) and for
   repeats of applied postings (the section after it).
 
+## The batch window
+
+The batch the user looks at opens in **one window of CREK's own**, never among the user's tabs in
+another window. This applies to every batch — the first one of a scan, "next 10", a re-shown
+table, "open the first 10", postings opened on request.
+
+- **Which window.** Right after a scan, in the same session: the scan's window — its
+  `isolatedContext` (`crek-scan-…`) and its anchor tab (*One browser window per scan* in the
+  job-scan skill), which the scan leaves open for this. Otherwise — a report with no scan in this
+  session, or the scan's window gone — open one the same way: an anchor tab with `new_page`,
+  `url: "file://${CLAUDE_PLUGIN_ROOT}/assets/crek-anchor.html"` and `isolatedContext` named
+  `crek-report-YYYYMMDD-HHMM`; note the name and the anchor's `pageId` and use that window for
+  every later batch. Never reuse a context name this session did not open. Each posting:
+  `new_page` with the window's `isolatedContext` and `background: true`, in table order.
+- **Postings that need the user's login to show** — LinkedIn, Indeed and other boards whose page
+  is logged out or behind a login wall without the user's session (an isolated context has no
+  cookies) — are the exception: they open in the shared context (no `isolatedContext`), in the
+  user's regular window, as before. Everything else goes into the batch window; a batch without
+  such postings is one window.
+- **Tab numbers.** chrome-shared numbers (`[N]` in the title) only the tabs of the shared
+  profile; tabs in an isolated context have no number. A batch-window tab is therefore given by
+  its **position**: the anchor is the first tab, the first posting after it is `1`, the next `2`,
+  counted in the order you opened the tabs that are still open (a new tab goes to the end of the
+  window; when you close one, the tabs after it move up by one). A shared-context tab keeps its
+  number, written as in its title: `[395]`. Count the positions once the batch's tabs are final,
+  right before printing, and say in one line above the table what the numbers mean, EN `Tabs 1–8:
+  the CREK window, counted from the anchor; [N]: your main window` / PL `Karty 1–8: okno CREK,
+  liczone od kotwicy; [N]: Twoje główne okno`. The user's answer ("3 send", "[395] decline") is
+  read against the printed table, never by counting the tabs again; a bare number that could be a
+  position and an `[N]` both → ask which.
+- **Checks.** `crek-closed-check.mjs --tabs` and `crek-dedupe-check.mjs --tabs` find tabs by the
+  `[N]` prefix, so they do not see batch-window tabs. For those rows, run the closed check with
+  `--urls` on their rows (it opens one tab of its own and closes it; LinkedIn URLs stay
+  `unknown`) and the repeats check with `--ids <row ids> --open-earlier` (stored refs), both before
+  opening the tabs; then, as you make each tab readable, read what it says — a posting closed in
+  any wording is closed (*Closed postings*). Shared-context rows are checked with `--tabs` as
+  below.
+- **When the window closes.** The anchor stays open while batches are being shown. Close the
+  batch window's tabs and then its anchor when the review is over — the user has ruled on the last
+  batch, set the rest aside ("skip the rest"), or asks to close it. If the user closes the window
+  themselves, nothing breaks: the next batch opens a new anchor. A new scan opens its own window
+  and does not close an earlier batch window; that one closes by this rule.
+
 ## Closed postings
 
 A posting open at scan time can close before the user looks at it — LinkedIn postings close
@@ -146,7 +192,7 @@ within hours, and the page then says "No longer accepting applications" (PL "Kan
 już akceptowani"). A closed posting in a batch wastes the user's time and reads as a broken
 scan, so **right before printing any batch** — the first batch of a scan, "next 10", a re-shown
 table, postings opened on request — after the tabs are open and their numbers re-read, check
-every tab of the batch:
+every tab of the batch (batch-window tabs, which have no `[N]`: *Checks* in *The batch window*):
 
 ```bash
 node "${CLAUDE_PLUGIN_ROOT}/assets/crek-closed-check.mjs" --tabs <every Tab number of the batch> --config crek.config.json
@@ -197,7 +243,7 @@ from justjoin; #956 Tailspin is #503 (same Traffit form 48213). Printed as ordin
 in Comments, such repeats make the user rule on — and ask to send — applications already sent. So **right before printing any batch**, together with the closed check, every row that has
 a `!` likely-same hit (or a possibly-same-client suspicion) on an entry with status `applied`,
 `interview`, `offer`, `declined` or `duplicate` (followed through `duplicate_of_id` to the entry
-holding the decision) is resolved first:
+holding the decision) is resolved first (batch-window tabs: *Checks* in *The batch window*):
 
 ```bash
 node "${CLAUDE_PLUGIN_ROOT}/assets/crek-dedupe-check.mjs" --tabs <every Tab number of the batch> --config crek.config.json --open-earlier

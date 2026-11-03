@@ -259,7 +259,8 @@ to przed użyciem:
   nie wywołuje żadnego API LinkedIn: jego skrypty tylko czytają tekst już otwartych kart LinkedIn
   i nigdy same nie otwierają stron LinkedIn. Claude czyta LinkedIn w przeglądarce strona po
   stronie, jak człowiek, i zatrzymuje się przy CAPTCHA, weryfikacji bezpieczeństwa albo
-  ostrzeżeniu. Ogranicz pracę na LinkedIn do minimum.
+  ostrzeżeniu (przy skanie najpierw próbuje tego portalu jeszcze raz w przeglądarce zapasowej, jeśli
+  jest uruchomiona, a potem pyta Ciebie). Ogranicz pracę na LinkedIn do minimum.
 - **Plugin `linkedin-mcp`** (opcjonalny) to zewnętrzne narzędzie do LinkedIn, które korzysta
   z Twojej sesji przez własną automatyzację przeglądarki. Dotyczy go to samo ryzyko. Przeczytaj
   jego README przed instalacją i nie uruchamiaj go równolegle z inną pracą na LinkedIn.

@@ -1,5 +1,40 @@
 # Changelog
 
+## 1.11.5 — 2026-11-03
+
+- `job-scan`, *One browser window per scan*, point 4: boards that need a login (LinkedIn, Indeed
+  and the like) are no longer the main session's part after the agents — that made a scan 20–30
+  minutes longer. They go to **one** login-board agent, started in parallel with the other scan
+  agents and the only one that touches LinkedIn and Indeed in the scan. It works in the shared
+  logged-in profile (no `isolatedContext`), opens its tabs with `background: true` in the user's
+  regular window (two windows in all: the scan's and that one), one posting at a time with pauses,
+  works only on its own `pageId`s and closes them, and may use the `linkedin-mcp` tools. A ready
+  text for that agent's prompt is in the skill; the other agents' text now says another agent does
+  the login boards.
+- Sign-in: on any login page, in either browser, the agent signs in with the portal's stored
+  password (`credentials.<portal>`, e.g. `credentials.linkedin`); no stored password, or one that
+  does not get in, is a block. On a block — a CAPTCHA, a security check, a verification, a code by
+  SMS or e-mail, a warning — it never solves or clicks through it: if the config has a second
+  browser (`browser.cdp_fallback_port`) and it answers on the port, the agent tries the board
+  again there over CDP; blocked there too, or no second browser, it stops that board and reports
+  it, and the main session asks the user. The `linkedin-mcp` login window is the server's own
+  Patchright browser, which no CREK tool can drive: the agent cannot sign in there, so it reports
+  it and goes on in chrome-shared. `bootstrap.md` says the same instead of "the password is for
+  chrome-shared only".
+- Batches open in **the batch window** (new section in `reporting.md`): right after a scan the
+  scan's window with its anchor — the scan no longer closes the anchor at its end — otherwise a
+  window with its own anchor (`crek-report-YYYYMMDD-HHMM`), also for the `report` skill without a
+  scan. Postings that need the user's login to show (LinkedIn, Indeed and the like) still open in
+  the shared context. The anchor is closed when the review is over: the last batch ruled on, the
+  rest set aside, or the user asks. Batch-window tabs have no `[N]` prefix, so their Tab is the
+  tab's position in that window (shared-context tabs written `[395]`), a line above the table says
+  so, and the user's answer is read against the printed table. Their closed and repeat checks use
+  `crek-closed-check.mjs --urls` and `crek-dedupe-check.mjs --ids`, since `--tabs` finds tabs by
+  `[N]` only.
+- The *LinkedIn* notes in the job-scan skill and the ats-playbook, *Presenting pages to the user*,
+  the `report` skill, the `browser.cdp_fallback_port` description in the schema and the *Risks* in
+  both READMEs say the same.
+
 ## 1.11.4 — 2026-11-03
 
 - `job-scan`: the scan's anchor tab is no longer an empty `about:blank`, which the user could take

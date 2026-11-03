@@ -107,8 +107,11 @@ stale uids fail. Job boards and ATSes commonly 403 plain HTTP clients — browse
   (the internal web API included): without the MCP tools, LinkedIn is read and clicked through
   like a person would — one page at a time, with pauses, only the pages the task needs. A missing
   session is handled as above; on a CAPTCHA, a security check or a warning, stop and tell the user
-  (never solve or click through it on your own). Whether a posting is still open: *LinkedIn* in
-  the job-scan skill.
+  (never solve or click through it on your own). In a scan the login-board agent first tries the
+  board again in the fallback browser (`browser.cdp_fallback_port`, when it is running; a login
+  page there is signed in with the same stored password) and then reports to the main session,
+  which asks the user (*One browser window per scan*, point 4, in the
+  job-scan skill). Whether a posting is still open: *LinkedIn* in the job-scan skill.
 - Easy Apply: multi-step wizard, snapshot between steps.
 - Sending a CV in a message thread: use the paperclip "attach file" button in the thread via
   the browser (the messaging UI accepts uploads); confirm the file bubble appears after send.
