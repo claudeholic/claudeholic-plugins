@@ -21,7 +21,9 @@ node "${CLAUDE_PLUGIN_ROOT}/assets/crek-config-check.mjs" crek.config.json
 
 **No config file** (the check exits 2 and says so): this is the first run. Tell the user, offer the
 bootstrap interview in `references/bootstrap.md` and create the config with them; do not analyse,
-score or send anything before it exists. The interview also settles the candidate's standing
+score or send anything before it exists. The interview starts by checking whether the
+recommended (not required) `linkedin-mcp` plugin is installed and suggesting it when it is not.
+It also settles the candidate's standing
 choices on conduct: what to answer when asked whether AI was used (`conduct.ai_use_question`) and
 whether you may create portal accounts on your own (`conduct.account_creation`).
 

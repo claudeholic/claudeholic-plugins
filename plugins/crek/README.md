@@ -95,7 +95,8 @@ Commands are typed into Claude Code. Numbers in commands are tab numbers from th
 
 **1. First run.** You type `scan the boards`. Every CREK command first looks for
 `crek.config.json`; there is none, so Claude offers a short interview and does nothing else until
-the config exists. It asks, a few questions at a time: the language of reports, your contact
+the config exists. First it checks whether the `linkedin-mcp` plugin is installed and, if not,
+suggests it (recommended, not required). Then it asks, a few questions at a time: the language of reports, your contact
 data, hard criteria (contract types, minimum rate, work modes, technologies you refuse), soft
 criteria, how to quote your rate, where your master CV is, what to answer when a form asks
 whether AI was used, whether Claude may create portal accounts on its own, and which database to

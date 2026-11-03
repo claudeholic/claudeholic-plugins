@@ -96,7 +96,8 @@ Polecenia wpisujesz w Claude Code. Liczby w poleceniach to numery kart z tabeli.
 
 **1. Pierwsze uruchomienie.** Piszesz `przeskanuj portale`. Każde polecenie CREK najpierw szuka
 `crek.config.json`; nie ma go, więc Claude proponuje krótki wywiad i nic innego nie robi, dopóki
-config nie powstanie. Zadaje po kilka pytań naraz: o język raportów, Twoje dane kontaktowe, twarde
+config nie powstanie. Najpierw sprawdza, czy jest zainstalowany plugin `linkedin-mcp`, i jeśli
+nie, proponuje go (zalecany, ale nie niezbędny). Potem zadaje po kilka pytań naraz: o język raportów, Twoje dane kontaktowe, twarde
 kryteria (formy umów, minimalna stawka, tryby pracy, odrzucane technologie), kryteria miękkie,
 sposób podawania stawki, położenie głównego CV, odpowiedź na pytanie w formularzu, czy użyto AI,
 zgodę na samodzielne zakładanie kont na portalach i wybór bazy (domyślnie SQLite). Potem czyta

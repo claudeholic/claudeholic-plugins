@@ -8,6 +8,64 @@ questions at a time, not all at once.
 
 ## The interview
 
+**Start with the `linkedin-mcp` plugin — once the user agrees to the interview, before question 1.**
+The plugin is **recommended, not required**: it gives Claude LinkedIn tools (search, postings,
+profiles, messages) through the user's own LinkedIn session; without it CREK handles every
+LinkedIn step through the browser (chrome-shared), and that works too. It is not a dependency of
+CREK, so a fresh install of CREK does not bring it. Check locally — never by calling LinkedIn:
+
+- **First, the tools in this session.** LinkedIn MCP tools among your tools or deferred tools —
+  `mcp__plugin_linkedin-mcp_linkedin__*` (the plugin) or `mcp__linkedin__*` (a server the user
+  configured by hand) — mean LinkedIn is covered: say nothing about it and go to question 1.
+- **Otherwise ask Claude Code**, in the project directory: `claude plugin list --json`, and look
+  for an entry whose `id` starts with `linkedin-mcp@`.
+  - **No entry** — not installed: show the message below.
+  - **`"enabled": false`** — installed but disabled: say so in one line; it is turned back on with
+    `claude plugin enable <id>` (or in `/plugin`, *Installed*), then `/reload-plugins`.
+  - **`"enabled": true`, but no tools in this session** — installed after this session started,
+    or its server does not start: suggest `/reload-plugins`. If `command -v uvx` finds nothing,
+    add that the server runs through uv, which must be installed first
+    (https://docs.astral.sh/uv/getting-started/installation/). Do not debug it further.
+  - **`claude` not found, or the command fails** — you cannot tell: show the message below,
+    starting with "if you don't have it yet" instead of "I don't see it".
+
+The message when it is missing, in the user's language (Polish unless they wrote otherwise):
+
+> **PL:** Zanim zaczniemy: nie widzę pluginu `linkedin-mcp`. Jest zalecany, ale nie niezbędny —
+> daje mi narzędzia LinkedIn (wyszukiwanie ofert, ogłoszenia, profile, wiadomości) przez Twoją
+> własną sesję LinkedIn. Bez niego CREK obsługuje LinkedIn przez przeglądarkę, tak jak człowiek,
+> i to też działa. Żeby go dodać, wpisz `/plugin install linkedin-mcp@claudeholic-plugins`,
+> a potem `/reload-plugins` — albo poproś, a zainstaluję go za Ciebie. Do LinkedIn logujesz się
+> sam, ja tego nie robię. Automatyzacja LinkedIn niesie ryzyko ograniczenia konta. Instalujemy
+> teraz czy pomijamy?
+>
+> **EN:** Before we start: I don't see the `linkedin-mcp` plugin. It is recommended, not
+> required — it gives me LinkedIn tools (job search, postings, profiles, messages) through your
+> own LinkedIn session. Without it CREK handles LinkedIn through the browser, like a person
+> would, and that works too. To add it, type `/plugin install linkedin-mcp@claudeholic-plugins`,
+> then `/reload-plugins` — or ask me and I'll install it for you. You sign in to LinkedIn
+> yourself; I don't do that for you. Automating LinkedIn carries a risk of account restrictions.
+> Install it now or skip?
+
+- **Installing.** By default the user types the command. Run `claude plugin install
+  linkedin-mcp@claudeholic-plugins` through Bash only when the user asks you to. If
+  `claudeholic-plugins` is missing from `claude plugin marketplace list`, it first needs `/plugin
+  marketplace add claudeholic/claudeholic-plugins`. After installing, the user types
+  `/reload-plugins` — this keeps the conversation. A restart of Claude Code works too but starts
+  the interview over (there is no config yet), so if they prefer a restart, suggest doing it after
+  the interview.
+- **Signing in to LinkedIn is the user's.** The server uses the user's own LinkedIn session: on
+  its first use it reuses a session from a local browser or opens a login window where the user
+  signs in. The plugin's README (`installPath` from `claude plugin list --json`, *Requirements*)
+  shows how to prepare the session in advance in their own terminal. Never sign in for the user,
+  never ask for or type their LinkedIn password, and do not call the LinkedIn tools during the
+  interview to "test" them. From the first use the rules in *LinkedIn* in `ats-playbook.md`
+  apply: low volume, no bulk searches; on a CAPTCHA, a security check or a warning, stop and tell
+  the user.
+- **"Skip" ends the topic.** Do not ask again and do not record the answer anywhere — the
+  interview runs once, and without the plugin the other skills simply use the browser for
+  LinkedIn. Whatever the answer, go on to question 1.
+
 1. **Language** — which language reports, tables, notes and drafts should be in. CREK is made for
    the Polish job market and speaks Polish and English; Polish is the default, English is
    complete (for people working in Poland without Polish). Store a code or a name in
@@ -108,10 +166,3 @@ Claude ask for that login when it is needed.
 --is-inside-work-tree`), add `crek.config.json`, the SQLite file (`crek.db`, plus `crek.db-wal`
 and `crek.db-shm`) and the CV directory to its `.gitignore` — ask before editing a `.gitignore`
 the user maintains. `crek-config-check.mjs` warns when git tracks any of them.
-
-## LinkedIn
-
-The `linkedin-mcp` plugin (`/plugin install linkedin-mcp@claudeholic-plugins`) is **recommended,
-not required**: it gives Claude LinkedIn tools (search, postings, profiles, messages) through the
-user's own session. Without it every LinkedIn step goes through the browser (chrome-shared) and
-still works. Mention it once during the bootstrap; do not push.

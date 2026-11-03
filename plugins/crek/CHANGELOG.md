@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.11.1 — 2026-11-03
+
+- Bootstrap interview (`skills/apply/references/bootstrap.md`): before the first question it
+  checks whether the `linkedin-mcp` plugin is installed — LinkedIn MCP tools in the session first,
+  then `claude plugin list --json` — and handles three cases: missing (suggests
+  `/plugin install linkedin-mcp@claudeholic-plugins`, recommended but not required; without it
+  LinkedIn goes through the browser), installed but disabled (`claude plugin enable`), installed
+  but without tools in the session (`/reload-plugins`, uv check). Claude installs it only when
+  the user asks, never signs in to LinkedIn for the user and does not call LinkedIn during the
+  interview. A "skip" is not stored — the interview runs once. `linkedin-mcp` stays out of
+  `dependencies`. Found in a test on a clean account: chrome-shared came in as a dependency,
+  linkedin-mcp did not, and the interview did not mention it.
+- `apply` Step 0 and README (*Example session*, PL and EN) mention the check.
+
 ## 1.11.0 — 2026-11-03
 
 Fixes from the third pre-publication review.
