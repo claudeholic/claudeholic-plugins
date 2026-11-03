@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.11.4 — 2026-11-03
+
+- `job-scan`: the scan's anchor tab is no longer an empty `about:blank`, which the user could take
+  for a stray tab and close, taking the scan's window with it. It is now
+  `assets/crek-anchor.html`, opened as `file://${CLAUDE_PLUGIN_ROOT}/assets/crek-anchor.html`:
+  a large "CREK Anchor" (the C in the CREK web app's accent colour), "Do not close this page
+  while CREK agents are working for you." and a smaller Polish line, tab title
+  "CREK Anchor — do not close". Dark or light after the system setting, with the web app's
+  colours; no scripts, no external resources. The optional `document.title` step is gone, and the
+  ready text for agents now says never to close the anchor page (CREK Anchor). If the file does
+  not load, the anchor falls back to `about:blank`.
+
 ## 1.11.3 — 2026-11-03
 
 - `job-scan`: new section *One browser window per scan*. A scan split across agents opened one

@@ -175,12 +175,13 @@ whether it runs in agents or in this session alone. This is a rule for you to fo
 the plugin enforces it.
 
 1. **Anchor tab first.** Before the first board and before any agent starts, the main session
-   opens one tab: `new_page` with `url: "about:blank"` and `isolatedContext` set to a name unique
-   to this scan, `crek-scan-YYYYMMDD-HHMM` (e.g. `crek-scan-20261103-2130`). Context names are
-   shared by every Claude session on the computer, so a generic name such as `crek-scan` can land
-   in another session's window. This tab opens the scan's window and holds it open; note its
-   `pageId`. Optionally title it so the user recognises the window: `evaluate_script` on that
-   `pageId` with `() => { document.title = 'CREK scan'; }`.
+   opens one tab: `new_page` with `url: "file://${CLAUDE_PLUGIN_ROOT}/assets/crek-anchor.html"`
+   and `isolatedContext` set to a name unique to this scan, `crek-scan-YYYYMMDD-HHMM` (e.g.
+   `crek-scan-20261103-2130`). Context names are shared by every Claude session on the computer,
+   so a generic name such as `crek-scan` can land in another session's window. This tab opens the
+   scan's window and holds it open; note its `pageId`. The page tells the user in large letters
+   not to close it (title "CREK Anchor — do not close"; English with a Polish line). If it does
+   not load, use `about:blank` as the anchor and go on.
 2. **Every board page in that context, in the background.** `new_page` with the same
    `isolatedContext` and `background: true`: the tab joins the anchor's window and does not come
    to the front. Never another context name — that is another window; and never a board page
@@ -194,8 +195,8 @@ the plugin enforces it.
    > with `new_page` with `isolatedContext: "<crek-scan-…>"` and `background: true` — never another
    > context name, never without `isolatedContext`. Work only on the `pageId`s you opened (the
    > `new_page` reply marks your new tab `[selected]`); every other tab belongs to someone else.
-   > Close your tabs with `close_page` when you finish each board. Never close page `<anchor
-   > pageId>` (about:blank, "CREK scan") — it holds the window. Do not open LinkedIn, Indeed or any
+   > Close your tabs with `close_page` when you finish each board. Never close the anchor page
+   > (CREK Anchor, page `<anchor pageId>`) — it holds the window. Do not open LinkedIn, Indeed or any
    > board that needs a login, in the browser or through LinkedIn MCP tools — the main session does
    > those. Do not start agents of your own.
 
