@@ -1,7 +1,7 @@
 {
   "name": "crek",
   "displayName": "CREK — job hunt pipeline",
-  "version": "1.11.1",
+  "version": "1.11.2",
   "description": "AI-driven job application assistant for the IT job market in Poland, in Polish and English: analyzes job postings against the candidate's profile, builds tailored CVs (HTML->PDF), fills ATS application forms via browser automation (Ashby, Greenhouse, Traffit, Personio, eRecruiter and more), and tracks every application, contact and conversation in a job-pipeline database (SQLite via Node's built-in node:sqlite, MySQL/MariaDB via the system client, or the bundled CREK PHP web app). Self-bootstrapping: on first use it interviews the user and creates its own config and database.",
   "author": {
     "name": "Michal Dzwoniarski",

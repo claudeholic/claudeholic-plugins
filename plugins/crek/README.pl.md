@@ -96,13 +96,15 @@ Polecenia wpisujesz w Claude Code. Liczby w poleceniach to numery kart z tabeli.
 
 **1. Pierwsze uruchomienie.** Piszesz `przeskanuj portale`. Każde polecenie CREK najpierw szuka
 `crek.config.json`; nie ma go, więc Claude proponuje krótki wywiad i nic innego nie robi, dopóki
-config nie powstanie. Najpierw sprawdza, czy jest zainstalowany plugin `linkedin-mcp`, i jeśli
-nie, proponuje go (zalecany, ale nie niezbędny). Potem zadaje po kilka pytań naraz: o język raportów, Twoje dane kontaktowe, twarde
-kryteria (formy umów, minimalna stawka, tryby pracy, odrzucane technologie), kryteria miękkie,
-sposób podawania stawki, położenie głównego CV, odpowiedź na pytanie w formularzu, czy użyto AI,
-zgodę na samodzielne zakładanie kont na portalach i wybór bazy (domyślnie SQLite). Potem czyta
-Twoje CV, buduje z niego profil umiejętności, z którego liczone są oceny, zapisuje
-`crek.config.json` (do odczytu tylko przez Ciebie) i tworzy bazę.
+config nie powstanie. Najpierw sprawdza, czy jest zainstalowany plugin `linkedin-mcp`, i jeśli nie,
+proponuje go (zalecany, ale nie niezbędny), a następnie pyta, czy zapisać w configu Twój login i
+hasło do LinkedIn, których Claude użyje w przeglądarce, gdy zabraknie w niej sesji LinkedIn
+(opcjonalne; hasło trafia do modelu jak cały config). Potem zadaje po kilka pytań naraz: o język
+raportów, Twoje dane kontaktowe, twarde kryteria (formy umów, minimalna stawka, tryby pracy,
+odrzucane technologie), kryteria miękkie, sposób podawania stawki, położenie głównego CV, odpowiedź
+na pytanie w formularzu, czy użyto AI, zgodę na samodzielne zakładanie kont na portalach i wybór
+bazy (domyślnie SQLite). Potem czyta Twoje CV, buduje z niego profil umiejętności, z którego
+liczone są oceny, zapisuje `crek.config.json` (do odczytu tylko przez Ciebie) i tworzy bazę.
 
 **2. Skan.** Jeszcze raz `przeskanuj portale`. Claude otwiera portale we wspólnej przeglądarce,
 ustawia ich filtry, czyta oferty z krótkiej listy, sprawdza je z bazą, ocenia i zapisuje jako

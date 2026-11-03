@@ -16,7 +16,8 @@ CREK, so a fresh install of CREK does not bring it. Check locally — never by c
 
 - **First, the tools in this session.** LinkedIn MCP tools among your tools or deferred tools —
   `mcp__plugin_linkedin-mcp_linkedin__*` (the plugin) or `mcp__linkedin__*` (a server the user
-  configured by hand) — mean LinkedIn is covered: say nothing about it and go to question 1.
+  configured by hand) — mean LinkedIn is covered: say nothing about it and go to the LinkedIn
+  login question below.
 - **Otherwise ask Claude Code**, in the project directory: `claude plugin list --json`, and look
   for an entry whose `id` starts with `linkedin-mcp@`.
   - **No entry** — not installed: show the message below.
@@ -35,17 +36,17 @@ The message when it is missing, in the user's language (Polish unless they wrote
 > daje mi narzędzia LinkedIn (wyszukiwanie ofert, ogłoszenia, profile, wiadomości) przez Twoją
 > własną sesję LinkedIn. Bez niego CREK obsługuje LinkedIn przez przeglądarkę, tak jak człowiek,
 > i to też działa. Żeby go dodać, wpisz `/plugin install linkedin-mcp@claudeholic-plugins`,
-> a potem `/reload-plugins` — albo poproś, a zainstaluję go za Ciebie. Do LinkedIn logujesz się
-> sam, ja tego nie robię. Automatyzacja LinkedIn niesie ryzyko ograniczenia konta. Instalujemy
-> teraz czy pomijamy?
+> a potem `/reload-plugins` — albo poproś, a zainstaluję go za Ciebie. Do LinkedIn w tym pluginie
+> logujesz się sam, ja tego nie robię. Automatyzacja LinkedIn niesie ryzyko ograniczenia konta.
+> Instalujemy teraz czy pomijamy?
 >
 > **EN:** Before we start: I don't see the `linkedin-mcp` plugin. It is recommended, not
 > required — it gives me LinkedIn tools (job search, postings, profiles, messages) through your
 > own LinkedIn session. Without it CREK handles LinkedIn through the browser, like a person
 > would, and that works too. To add it, type `/plugin install linkedin-mcp@claudeholic-plugins`,
-> then `/reload-plugins` — or ask me and I'll install it for you. You sign in to LinkedIn
-> yourself; I don't do that for you. Automating LinkedIn carries a risk of account restrictions.
-> Install it now or skip?
+> then `/reload-plugins` — or ask me and I'll install it for you. You sign in to LinkedIn for
+> this plugin yourself; I don't do that for you. Automating LinkedIn carries a risk of account
+> restrictions. Install it now or skip?
 
 - **Installing.** By default the user types the command. Run `claude plugin install
   linkedin-mcp@claudeholic-plugins` through Bash only when the user asks you to. If
@@ -54,17 +55,39 @@ The message when it is missing, in the user's language (Polish unless they wrote
   `/reload-plugins` — this keeps the conversation. A restart of Claude Code works too but starts
   the interview over (there is no config yet), so if they prefer a restart, suggest doing it after
   the interview.
-- **Signing in to LinkedIn is the user's.** The server uses the user's own LinkedIn session: on
-  its first use it reuses a session from a local browser or opens a login window where the user
-  signs in. The plugin's README (`installPath` from `claude plugin list --json`, *Requirements*)
-  shows how to prepare the session in advance in their own terminal. Never sign in for the user,
-  never ask for or type their LinkedIn password, and do not call the LinkedIn tools during the
-  interview to "test" them. From the first use the rules in *LinkedIn* in `ats-playbook.md`
-  apply: low volume, no bulk searches; on a CAPTCHA, a security check or a warning, stop and tell
-  the user.
+- **Signing in to LinkedIn for this server is the user's.** The server uses the user's own
+  LinkedIn session: on its first use it reuses a session from a local browser or opens a login
+  window where the user signs in. The plugin's README (`installPath` from `claude plugin list
+  --json`, *Requirements*) shows how to prepare the session in advance in their own terminal. Never sign in for the user
+  there and never type a password into the server's login window — the LinkedIn password the next
+  question offers to store is for the chrome-shared browser only, never for this server — and do
+  not call the LinkedIn tools during the interview to "test" them. From the first use the rules
+  in *LinkedIn* in `ats-playbook.md` apply: low volume, no bulk searches; on a CAPTCHA, a security
+  check or a warning, stop and tell the user.
 - **"Skip" ends the topic.** Do not ask again and do not record the answer anywhere — the
   interview runs once, and without the plugin the other skills simply use the browser for
-  LinkedIn. Whatever the answer, go on to question 1.
+  LinkedIn. Whatever the answer, go on to the LinkedIn login question.
+
+**Then the LinkedIn login for the browser — always, whether the plugin was already there, has just
+been installed or was skipped.** When the shared chrome-shared profile has no LinkedIn session,
+CREK signs in there with `credentials.linkedin` from the config (*LinkedIn* in
+`ats-playbook.md`). Ask once, in the user's language:
+
+> **PL:** Czy chcesz zapisać login i hasło do LinkedIn w configu? Użyję ich, gdy w przeglądarce
+> zabraknie sesji LinkedIn. Uwaga: hasło trafia do modelu (Anthropic) jak cały config. Jeśli nie
+> chcesz — zalogujesz się sam, kiedy poproszę.
+>
+> **EN:** Do you want to store your LinkedIn login and password in the config? I'll use them when
+> the browser has no LinkedIn session. Note: the password reaches the model (Anthropic) like the
+> rest of the config. If you'd rather not, you'll sign in yourself when I ask.
+
+- **Yes** — take the login (usually the e-mail) and the password, and write them in step 11 as
+  `"credentials": {"linkedin": {"user": "...", "password": "...", "login_method": "password"}}`.
+  Do not repeat the password back in the conversation and do not sign in to "test" it.
+- **No** — store nothing. When the browser later has no LinkedIn session, ask the user to sign in
+  there and wait.
+- **Either way**, on a CAPTCHA, a security check or a warning, stop and tell the user — a stored
+  password does not change that. Then go on to question 1.
 
 1. **Language** — which language reports, tables, notes and drafts should be in. CREK is made for
    the Polish job market and speaks Polish and English; Polish is the default, English is

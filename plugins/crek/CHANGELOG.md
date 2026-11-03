@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.11.2 — 2026-11-03
+
+- Bootstrap interview (`skills/apply/references/bootstrap.md`): right after the `linkedin-mcp`
+  step — whether the plugin was there, installed or skipped — it asks whether to store the
+  LinkedIn login and password in the config, saying that the password reaches the model
+  (Anthropic) like the rest of the config. Yes → `credentials.linkedin` with `user`, `password`
+  and `login_method: "password"`, used to sign in to LinkedIn in the chrome-shared browser when its
+  session is missing; no → nothing is stored and Claude asks the user to sign in when needed.
+  Until now the skills used `credentials.linkedin` but the interview never asked for it, so a
+  clean install never had it. A stored password does not change the rule: on a CAPTCHA, a
+  security check or a warning, Claude stops and tells the user.
+- The `linkedin-mcp` step no longer says "never ask for the LinkedIn password": signing in to
+  that server's login window stays the user's, and the stored password is for the browser only.
+- README (*Example session*, PL and EN) mentions the question.
+
 ## 1.11.1 — 2026-11-03
 
 - Bootstrap interview (`skills/apply/references/bootstrap.md`): before the first question it

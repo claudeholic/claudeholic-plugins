@@ -96,12 +96,15 @@ Commands are typed into Claude Code. Numbers in commands are tab numbers from th
 **1. First run.** You type `scan the boards`. Every CREK command first looks for
 `crek.config.json`; there is none, so Claude offers a short interview and does nothing else until
 the config exists. First it checks whether the `linkedin-mcp` plugin is installed and, if not,
-suggests it (recommended, not required). Then it asks, a few questions at a time: the language of reports, your contact
-data, hard criteria (contract types, minimum rate, work modes, technologies you refuse), soft
-criteria, how to quote your rate, where your master CV is, what to answer when a form asks
-whether AI was used, whether Claude may create portal accounts on its own, and which database to
-use (SQLite by default). Then it reads your CV, builds the skill inventory that scores come
-from, writes `crek.config.json` (readable by you only) and creates the database.
+suggests it (recommended, not required), then asks whether to store your LinkedIn login and
+password in the config for Claude to use in the browser when its LinkedIn session is missing
+(optional; the password reaches the model like the rest of the config). Then it asks, a few
+questions at a time: the language of reports, your contact data, hard criteria (contract types,
+minimum rate, work modes, technologies you refuse), soft criteria, how to quote your rate, where
+your master CV is, what to answer when a form asks whether AI was used, whether Claude may create
+portal accounts on its own, and which database to use (SQLite by default). Then it reads your CV,
+builds the skill inventory that scores come from, writes `crek.config.json` (readable by you only)
+and creates the database.
 
 **2. Scan.** `scan the boards` again. Claude opens the boards in the shared browser, applies their
 filters, reads the shortlisted postings, checks them against the database, scores them and
