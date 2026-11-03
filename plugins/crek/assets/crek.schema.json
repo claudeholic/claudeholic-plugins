@@ -1,0 +1,771 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/claudeholic/claudeholic-plugins/master/plugins/crek/assets/crek.schema.json",
+  "title": "crek.config.json",
+  "description": "Everything CREK knows about one candidate. Rules live in the plugin and are the same for everyone; this file holds only what differs between people. If a value here would be equally true for another user, it belongs in the plugin instead.",
+  "type": "object",
+  "required": [
+    "version",
+    "candidate",
+    "criteria",
+    "cv",
+    "db"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "const": 2,
+      "description": "Config format version. The plugin migrates older files on first run."
+    },
+    "candidate": {
+      "type": "object",
+      "description": "Who is applying. Goes into application forms verbatim.",
+      "required": [
+        "name",
+        "email"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string",
+          "description": "Free text as it should appear on forms, e.g. 'Wroclaw, Poland'."
+        },
+        "country": {
+          "type": "string"
+        },
+        "linkedin": {
+          "type": "string"
+        },
+        "github": {
+          "type": "string"
+        },
+        "website": {
+          "type": "string"
+        }
+      }
+    },
+    "criteria": {
+      "type": "object",
+      "description": "What the candidate will and will not take. Split deliberately: `blockers` are decidable from the posting alone and are enforced mechanically; `soft` needs judgement and is reported, never auto-applied.",
+      "required": [
+        "blockers"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "blockers": {
+          "type": "object",
+          "description": "Minuses the candidate cares about most. Each one a posting fails costs one point of match score and is named first in Minusy with the value that failed; the posting is still scored and shown, because a company sometimes bends and so does the candidate. Only 'locations' excludes outright, since applying is then impossible. See scoring.md.",
+          "additionalProperties": false,
+          "properties": {
+            "contract_types": {
+              "type": "array",
+              "description": "Accepted contract forms. A posting offering none of them is out.",
+              "items": {
+                "enum": [
+                  "b2b",
+                  "employment",
+                  "mandate",
+                  "internship",
+                  "any"
+                ]
+              },
+              "minItems": 1
+            },
+            "min_rate": {
+              "type": "object",
+              "description": "Floor for the posted rate. Postings without a rate are not blocked — they are flagged as unverifiable.",
+              "required": [
+                "amount",
+                "unit",
+                "currency"
+              ],
+              "properties": {
+                "amount": {
+                  "type": "number"
+                },
+                "unit": {
+                  "enum": [
+                    "hour",
+                    "day",
+                    "month",
+                    "year"
+                  ]
+                },
+                "currency": {
+                  "type": "string"
+                }
+              }
+            },
+            "work_modes": {
+              "type": "array",
+              "description": "Accepted work modes before exceptions.",
+              "items": {
+                "enum": [
+                  "remote",
+                  "hybrid",
+                  "onsite"
+                ]
+              },
+              "minItems": 1
+            },
+            "work_mode_exceptions": {
+              "type": "array",
+              "description": "Narrow openings in the rule above, e.g. hybrid is fine in these cities from this rate up.",
+              "items": {
+                "type": "object",
+                "required": [
+                  "mode"
+                ],
+                "properties": {
+                  "mode": {
+                    "enum": [
+                      "remote",
+                      "hybrid",
+                      "onsite"
+                    ]
+                  },
+                  "cities": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "max_office_days_per_month": {
+                    "type": "number"
+                  },
+                  "min_rate": {
+                    "type": "object",
+                    "properties": {
+                      "amount": {
+                        "type": "number"
+                      },
+                      "unit": {
+                        "enum": [
+                          "hour",
+                          "day",
+                          "month",
+                          "year"
+                        ]
+                      },
+                      "currency": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "note": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "reject_core_technologies": {
+              "type": "array",
+              "description": "Technologies that block the posting when they are its core — not when merely mentioned among the tags.",
+              "items": {
+                "type": "string"
+              }
+            },
+            "reject_languages": {
+              "type": "array",
+              "description": "Working languages the candidate will not work in.",
+              "items": {
+                "type": "string"
+              }
+            },
+            "exclude_rejecting_companies": {
+              "type": "boolean",
+              "default": true,
+              "description": "Treat an earlier rejection by the same company (a row with status 'rejected' — the employer's no; 'declined' and 'skipped' do not count) as a minus on its other postings, naming the earlier entry. Not an exclusion: agencies recruit for many clients through recruiters and managers who do not know each other, so one no says little about the next role."
+            },
+            "locations": {
+              "type": "array",
+              "description": "Geographic eligibility, e.g. ['PL', 'EU']. Empty means no constraint.",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "soft": {
+          "type": "object",
+          "description": "Reported, never auto-applied — the user decides.",
+          "additionalProperties": false,
+          "properties": {
+            "ask_before_reject": {
+              "type": "array",
+              "description": "Technologies that would otherwise look disqualifying. When one is a core requirement, ask the user instead of deciding. Typically things being learned right now.",
+              "items": {
+                "type": "object",
+                "required": [
+                  "technology"
+                ],
+                "properties": {
+                  "technology": {
+                    "type": "string"
+                  },
+                  "note": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "role_families": {
+              "type": "object",
+              "description": "Which kinds of role to look for, and which only under a condition.",
+              "properties": {
+                "preferred": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "conditional": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "family",
+                      "condition"
+                    ],
+                    "properties": {
+                      "family": {
+                        "type": "string"
+                      },
+                      "condition": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "avoid": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "priorities": {
+              "type": "array",
+              "description": "What makes a posting worth pushing up the list even at equal coverage, e.g. 'roles built around Terraform'.",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          }
+        },
+        "languages": {
+          "type": "object",
+          "description": "Language levels, e.g. {\"pl\": \"native\", \"en\": \"C1\"}. Used to answer form questions and to check posting requirements.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "availability": {
+          "type": "string",
+          "description": "Notice period or start date, as it should be written on forms."
+        },
+        "context": {
+          "type": "string",
+          "description": "Why the search is happening and how urgent it is. Shapes recommendations, not filtering."
+        }
+      }
+    },
+    "rate_policy": {
+      "type": "object",
+      "description": "What to quote when a form asks. The posted range wins when known.",
+      "additionalProperties": false,
+      "properties": {
+        "default": {
+          "type": "object",
+          "properties": {
+            "amount": {
+              "type": "number"
+            },
+            "unit": {
+              "enum": [
+                "hour",
+                "day",
+                "month",
+                "year"
+              ]
+            },
+            "currency": {
+              "type": "string"
+            },
+            "spread": {
+              "type": "number",
+              "description": "How far to flex the default in either direction."
+            }
+          }
+        },
+        "when_range_posted": {
+          "enum": [
+            "top",
+            "upper-third",
+            "middle",
+            "match-minimum"
+          ],
+          "default": "upper-third",
+          "description": "Where to place the quote inside a posted range."
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "cv": {
+      "type": "object",
+      "description": "The master CV is the single source of truth for what the candidate can claim. Tailored variants are derived from it and never feed back into scoring — otherwise a CV written for a posting would always 'match' it.",
+      "required": [
+        "master"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "master": {
+          "type": "string",
+          "description": "Path to the master CV (PDF), absolute or relative to crek.config.json. The one a stranger would get."
+        },
+        "master_sha256": {
+          "type": "string",
+          "description": "SHA-256 of the master CV when the inventory was last built (crek:profile writes it together with profile_inventory.source_sha256). A mismatch with the file on disk means the inventory is stale."
+        },
+        "dir": {
+          "type": "string",
+          "description": "Directory holding one subdirectory per application, named <Company>_<job id>; absolute or relative to crek.config.json. Optional, but every tailored CV needs a home (crek-config-check warns when it is missing)."
+        },
+        "public_url": {
+          "type": "string"
+        },
+        "build_template": {
+          "type": "string",
+          "description": "Path to the build_cv.py used as the starting point for new variants."
+        },
+        "rules": {
+          "type": "array",
+          "description": "Candidate-specific truths about what may and may not appear on a CV, e.g. an employer to omit, a technology not to list until actually learned.",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "profile_inventory": {
+      "type": "object",
+      "description": "What the master CV actually claims, extracted once by the crek:profile skill. Job-posting requirements are scored against this — not against the model's memory of the candidate.",
+      "additionalProperties": false,
+      "properties": {
+        "generated_at": {
+          "type": "string"
+        },
+        "source_sha256": {
+          "type": "string",
+          "description": "SHA-256 of the CV the inventory was built from — the same value as cv.master_sha256 (crek:profile writes both). Compared with the file on disk before trusting the inventory."
+        },
+        "headline": {
+          "type": "string"
+        },
+        "years_experience": {
+          "type": "number"
+        },
+        "skills": {
+          "type": "array",
+          "description": "One entry per claimable skill, with how recently and how deeply it was used — a skill last touched three years ago is not the same as one used daily.",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "level"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "level": {
+                "enum": [
+                  "expert",
+                  "strong",
+                  "working",
+                  "exposure"
+                ]
+              },
+              "last_used": {
+                "type": "string",
+                "description": "YYYY-MM, or 'current'."
+              },
+              "evidence": {
+                "type": "string",
+                "description": "Where on the CV this is visible — employer, project or bullet."
+              },
+              "aliases": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Other names postings use for it."
+              }
+            }
+          }
+        },
+        "domains": {
+          "type": "array",
+          "description": "Industries worked in, e.g. payments, banking, telco. Postings often ask for domain rather than technology.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "certifications": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "education": {
+          "type": "array",
+          "description": "Degrees and postgraduate studies from the CV, one string each (level, institution, field, years). Postings often ask for a degree; without this the requirement is wrongly scored as unknown.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "gaps": {
+          "type": "array",
+          "description": "Things the candidate is repeatedly asked for and does not have. Stated once here so every report can say it plainly.",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "db": {
+      "type": "object",
+      "description": "Where the pipeline lives. Every skill and script reads and writes it through assets/crek-db.mjs, which speaks all three backends with the same commands.",
+      "required": [
+        "backend",
+        "path_or_url"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "backend": {
+          "enum": [
+            "sqlite",
+            "mysql",
+            "http-api"
+          ],
+          "description": "sqlite — a local file through Node's built-in node:sqlite (Node >= 22.13), nothing to install; the default. mysql — a MySQL / MariaDB server through the system command-line client (mysql or mariadb). http-api — the bundled CREK web app's api.php (assets/crek-php) or anything implementing the contract in skills/apply/references/schema.sql §API."
+        },
+        "path_or_url": {
+          "type": "string",
+          "description": "sqlite: path to the database file, absolute or relative to crek.config.json (e.g. 'crek.db'). mysql: mysql://[user@]host[:port]/database, optionally ?ssl=required or ?socket=/path/to/mysqld.sock. http-api: the URL of api.php, e.g. 'https://host/api.php' (a trailing '?route=' is accepted)."
+        },
+        "auth": {
+          "type": "string",
+          "description": "user:password — HTTP basic auth for http-api (only when the web server adds it in front of api.php; an extra layer, it never replaces db.token), the database login for mysql; unused for sqlite. Kept in this file (chmod 600), never in a repository. Claude reads this file, so the value reaches the model like the rest of the config."
+        },
+        "token": {
+          "type": "string",
+          "minLength": 64,
+          "description": "http-api only: the API token, the same value as $api_token in the server's config.php — 32 random bytes in hex (openssl rand -hex 32). Sent in the X-Crek-Token header on every request; the bundled api.php from crek 1.10 refuses requests without it (an older api.php ignores it). Optional in the format so that older configs keep working; crek-config-check warns when it is missing. Kept in this file (chmod 600), never in a repository; like db.auth, it reaches the model when Claude reads the config."
+        },
+        "client": {
+          "type": "string",
+          "description": "mysql only: the command-line client to run, a name on PATH or an absolute path. Default: mariadb, then mysql."
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "pipeline": {
+      "type": "object",
+      "description": "How the pipeline is kept. The mechanics are the plugin's; these are the candidate's habits.",
+      "additionalProperties": false,
+      "properties": {
+        "silence_means": {
+          "enum": [
+            "rejection",
+            "pending"
+          ],
+          "default": "rejection",
+          "description": "What an employer going quiet means. 'rejection' treats the role as dead and moves on; 'pending' keeps it open and worth tracking."
+        },
+        "follow_ups": {
+          "enum": [
+            "never",
+            "ask",
+            "suggest"
+          ],
+          "default": "ask",
+          "description": "Whether to chase a silent employer. 'never' means do not propose status enquiries or reminder emails at all — energy goes into new applications instead."
+        },
+        "after_closing_a_thread": {
+          "enum": [
+            "scan",
+            "summarise",
+            "ask"
+          ],
+          "default": "ask",
+          "description": "Default next move once an application is closed one way or another."
+        }
+      }
+    },
+    "boards": {
+      "description": "Where job scans look. The plugin ships a default list (assets/boards.json); the config only adjusts it. A scan that picks boards from memory drifts toward the same two or three every time; a written list keeps coverage deliberate and lets the user drop a board that never yields anything.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Adjustments to the default board list shipped with the plugin (assets/boards.json). Effective list = plugin defaults, with overrides applied, plus extra, minus disabled. A board added to the plugin later is scanned by default unless its key is disabled here.",
+          "properties": {
+            "extra": {
+              "type": "array",
+              "description": "Boards the plugin does not ship, scanned after the defaults in list order.",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "key",
+                  "name",
+                  "url"
+                ],
+                "properties": {
+                  "key": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9_]+$",
+                    "description": "Stable identifier, the handle for boards.disabled and boards.override. Plugin keys are listed in assets/boards.json."
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "Short label used in reports and in the pipeline's source column."
+                  },
+                  "url": {
+                    "type": "string",
+                    "description": "Entry point for searching - ideally a URL with the board's own filters already applied."
+                  },
+                  "region": {
+                    "type": "string",
+                    "enum": [
+                      "pl",
+                      "global",
+                      "freelance",
+                      "ats-search"
+                    ],
+                    "description": "pl - Polish boards; global - international and remote boards; freelance - contract/project marketplaces; ats-search - web search restricted to an ATS domain."
+                  },
+                  "notes": {
+                    "type": "string",
+                    "description": "What the board is good for and its traps (login walls, misleading remote labels, currency quirks)."
+                  }
+                }
+              }
+            },
+            "disabled": {
+              "type": "array",
+              "description": "Keys of boards to skip - plugin defaults or extra entries. The scan report lists them as skipped, so the coverage gap stays visible.",
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true
+            },
+            "override": {
+              "type": "object",
+              "description": "Key -> partial board fields replacing the plugin default's (e.g. url with the candidate's own filters, or notes).",
+              "additionalProperties": {
+                "type": "object",
+                "additionalProperties": false,
+                "minProperties": 1,
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Short label used in reports and in the pipeline's source column."
+                  },
+                  "url": {
+                    "type": "string",
+                    "description": "Entry point for searching - ideally a URL with the board's own filters already applied."
+                  },
+                  "region": {
+                    "type": "string",
+                    "enum": [
+                      "pl",
+                      "global",
+                      "freelance",
+                      "ats-search"
+                    ],
+                    "description": "pl - Polish boards; global - international and remote boards; freelance - contract/project marketplaces; ats-search - web search restricted to an ATS domain."
+                  },
+                  "notes": {
+                    "type": "string",
+                    "description": "What the board is good for and its traps (login walls, misleading remote labels, currency quirks)."
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "array",
+          "description": "DEPRECATED legacy form (crek < 1.7): the full list of boards. Still accepted; crek-config-check warns and suggests migrating to the object form, which builds on the plugin defaults in assets/boards.json.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "url"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Short label used in reports and in the pipeline's source column."
+              },
+              "url": {
+                "type": "string",
+                "description": "Entry point for searching - ideally a URL with the board's own filters already applied."
+              },
+              "group": {
+                "type": "string",
+                "description": "Free-form grouping, e.g. 'local', 'remote-global', 'contract', 'niche', 'ats-search'."
+              },
+              "enabled": {
+                "type": "boolean",
+                "default": true,
+                "description": "False keeps the board on record without scanning it - useful for boards that were tried and yielded nothing."
+              },
+              "notes": {
+                "type": "string",
+                "description": "What the board is good for and its traps (login walls, misleading remote labels, currency quirks)."
+              }
+            }
+          }
+        }
+      ]
+    },
+    "browser": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cdp_fallback_port": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Debugging port of the fallback browser — a second browser of the user's, on a separate profile (never the everyday one), used when an ATS blocks the shared one. Close it when the form is sent."
+        },
+        "pdf_command": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "presentation": {
+      "type": "object",
+      "description": "How results are reported back. The report's structure is fixed by the plugin; this only adjusts language and wording.",
+      "additionalProperties": false,
+      "properties": {
+        "language": {
+          "type": "string",
+          "description": "Language for reports and messages to the user. Accepted: a language code (\"en\", \"pl\", also with a region such as \"en-GB\") or a language name in English or in the language itself (\"English\", \"Polish\", \"polski\"), case-insensitive. It selects the fixed wording — report column headers, standard cell values, CREK communication phrases, script output — from assets/i18n.json; no value means Polish, the plugin's default; a value with no dictionary there falls back to \"en\" for that wording. Free text Claude writes (verdicts, drafts) still follows the language as written."
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "conduct": {
+      "type": "object",
+      "description": "Standing decisions about how Claude acts in the candidate's name, beyond skills/apply/references/conduct.md. Asked in the bootstrap interview.",
+      "additionalProperties": false,
+      "properties": {
+        "ai_use_question": {
+          "enum": [
+            "truthful",
+            "user_answers",
+            "ask"
+          ],
+          "description": "What to do when a form or a recruiter asks directly whether AI was used to prepare the application. truthful — answer yes, truthfully and briefly (an assistant helps prepare and submit applications; the experience and the answers are the candidate's). user_answers — show the question to the user and let them write the answer themselves. ask — ask the user each time what to do. Not set: same as ask. Whatever the setting, Claude never denies using AI."
+        },
+        "account_creation": {
+          "enum": [
+            "auto",
+            "ask"
+          ],
+          "description": "Whether Claude may create an account on a job portal or ATS tenant on its own, when a form cannot be sent without one and no existing account or guest route is available. auto — create it (the candidate's e-mail, a generated password, recorded in credentials). ask — ask the user each time, naming the portal. Not set: same as ask. Resetting the password of an existing account is not covered: Claude always asks first."
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "credentials": {
+      "type": "object",
+      "description": "Accounts on job portals and ATS tenants, one entry per portal (key: portal name, e.g. pracuj_pl, or <ats>_<company>, e.g. workday_acme). Passwordless and unknown-password accounts are recorded too. This file must stay out of version control and chmod 600.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "string",
+            "description": "Login, usually the candidate's e-mail."
+          },
+          "password": {
+            "type": "string",
+            "description": "Password; empty for passwordless or unknown-password accounts."
+          },
+          "url": {
+            "type": "string",
+            "description": "Login or portal URL."
+          },
+          "created": {
+            "type": "string",
+            "description": "Date the account was created or first recorded (YYYY-MM-DD)."
+          },
+          "login_method": {
+            "type": "string",
+            "enum": [
+              "password",
+              "email_code",
+              "sso",
+              "none"
+            ],
+            "description": "password = classic login; email_code = one-time code by e-mail; sso = via LinkedIn/Google; none = no account (guest apply only)."
+          },
+          "notes": {
+            "type": "string",
+            "description": "Anything the next run must know, e.g. 'password unknown — ask before reset'."
+          }
+        },
+        "additionalProperties": true
+      },
+      "properties": {
+        "_note": {
+          "type": "string",
+          "description": "Free-text note for humans."
+        }
+      }
+    }
+  }
+}

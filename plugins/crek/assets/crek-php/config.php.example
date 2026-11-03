@@ -1,0 +1,73 @@
+<?php
+// SPDX-License-Identifier: GPL-3.0-only
+// Copy to config.php, set the API token, and keep ONE of the two database connections below.
+// Keep config.php readable by the web server only (chmod 600 / 640): it holds the token and,
+// for MySQL, the database password. Keep it in YOUR copy of the app (a directory of your own, see
+// README.md, level 2), never inside the installed plugin: a plugin update replaces that directory.
+
+// ---------------------------------------------------------------------------
+// API token — REQUIRED. Without it api.php and index.php refuse to work.
+//
+// 32 random bytes in hex (64 characters); generate one with either of:
+//
+//     openssl rand -hex 32
+//     php -r 'echo bin2hex(random_bytes(32)), "\n";'
+//
+// Every request to index.php and api.php must carry it in the X-Crek-Token header:
+// - the plugin: put the same value into crek.config.json as
+//   "db": {"backend": "http-api", "path_or_url": "https://.../api.php", "token": "<the token>"};
+// - the browser: a header extension (e.g. ModHeader) adding X-Crek-Token: <the token> to
+//   requests for this site only (README.md, "Access").
+// Never put it in a URL. Shorter values are refused.
+//
+// HTTP basic auth of the web server (.htaccess) is an optional extra layer in front of this;
+// it never replaces the token.
+// ---------------------------------------------------------------------------
+$api_token = 'PASTE_THE_OUTPUT_OF_openssl_rand_-hex_32_HERE';
+
+// ---------------------------------------------------------------------------
+// Web UI defaults — optional. The page has a language and a theme switch; what a browser picks
+// there is remembered in that browser and wins over these defaults.
+//   $ui_lang:  'pl' (default) or 'en' — any language with a dictionary in index.php
+//   $ui_theme: 'dark' (default) or 'light'
+// ---------------------------------------------------------------------------
+$ui_lang = 'pl';
+$ui_theme = 'dark';
+
+// api.php refuses cross-site requests: writes must be sent as application/json, a browser
+// Origin must be this host, and under `php -S` the Host header must be a loopback name.
+// To reach a `php -S` instance under another name, or to accept a browser Origin other than
+// the Host the request names (an alias behind a proxy), list the extra host names here:
+// $allowed_hosts = ['crek.example.org'];
+
+$opts = [
+    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+];
+
+// ---------------------------------------------------------------------------
+// Option A — SQLite (no server required) — the default
+//
+// Point this at the same crek.db the plugin created in your project
+// directory (node crek-db.mjs --config crek.config.json init creates it
+// from skills/apply/references/schema.sqlite.sql), then, in the directory
+// holding your copy of the app, serve the UI with:
+//
+//     php -S 127.0.0.1:8080
+//
+// and open http://127.0.0.1:8080/ . Needs the PHP command-line interpreter with
+// the SQLite PDO driver (Debian/Ubuntu: apt install php-cli php-sqlite3).
+// ---------------------------------------------------------------------------
+$db = new PDO('sqlite:/absolute/path/to/crek.db', null, null, $opts);
+$db->exec('PRAGMA foreign_keys = ON');
+
+// ---------------------------------------------------------------------------
+// Option B — MySQL / MariaDB (for a permanently hosted instance)
+// Comment out Option A above and uncomment this block.
+// ---------------------------------------------------------------------------
+// $db = new PDO(
+//     'mysql:host=localhost;dbname=YOUR_DB;charset=utf8mb4',
+//     'YOUR_DB_USER',
+//     'YOUR_DB_PASSWORD',
+//     $opts
+// );

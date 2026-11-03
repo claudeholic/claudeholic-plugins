@@ -29,6 +29,15 @@
       "author": {
         "name": "Michal Dzwoniarski"
       }
+    },
+    {
+      "name": "crek",
+      "source": "./plugins/crek",
+      "description": "Job hunt pipeline for the IT job market in Poland (Polish and English): scans job boards, tailors a CV per posting, fills ATS forms in a real browser, and tracks every application, contact and conversation in its own database (SQLite, MySQL or the bundled web app). Requires chrome-shared, which is Linux only.",
+      "category": "productivity",
+      "author": {
+        "name": "Michal Dzwoniarski"
+      }
     }
   ]
 }

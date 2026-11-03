@@ -1,0 +1,192 @@
+{
+  "description": "Default job boards scanned by crek:job-scan, in the order they are worth checking. The config only adjusts this list: boards.extra adds boards, boards.disabled skips keys, boards.override patches fields of a key (typically url with the candidate's own filters). A board added here later is scanned by default unless disabled. Keys are stable - never rename one, configs refer to it.",
+  "excluded": [
+    {
+      "name": "Toptal",
+      "url": "https://www.toptal.com/",
+      "reason": "Vetting network, not a job list: you apply once to the network and it matches you to clients. Nothing to scan."
+    },
+    {
+      "name": "Turing.com",
+      "url": "https://www.turing.com/",
+      "reason": "Vetting network, not a job list: tests and a profile, then the network matches you. Nothing to scan."
+    }
+  ],
+  "boards": [
+    {
+      "key": "justjoin",
+      "name": "justjoin.it",
+      "url": "https://justjoin.it/job-offers/all-locations",
+      "region": "pl",
+      "notes": "Largest PL IT board, B2B rates shown; keyword search covers tags. Closed: HTTP 404 'Sorry, we cannot display this page' (expired offers are removed); possibly 'Oferta archiwalna' first, as on rocketjobs. Refs: the 'Apply' button leads to the employer's ATS (Traffit /public/form/a/<hash>, eRecruiter WebID=, Recruitify /job/<uuid>, Greenhouse) - take the form id from that link; the body rarely has a reference number."
+    },
+    {
+      "key": "nofluffjobs",
+      "name": "nofluffjobs.com",
+      "url": "https://nofluffjobs.com/pl/",
+      "region": "pl",
+      "notes": "Rates always shown; many agency (body leasing) postings. Closed: the same URL shows 'Oferta pracy <title> wygasła.' (HTTP 200). Refs: agencies put 'Ref.' / 'Nr ref.' at the end of the body; 'Aplikuj' often goes to Traffit / Lever (lever-source=nofluff) - take the form id from that link."
+    },
+    {
+      "key": "solid_jobs",
+      "name": "solid.jobs",
+      "url": "https://solid.jobs/offers/it",
+      "region": "pl",
+      "notes": "Traffit forms use Selectize - set values via el.selectize.setValue. Closed: redirect to /offer-not-found/..., 'Przepraszamy, rekrutacja już się zakończyła', badge 'Zakończone'. Refs: offers are Traffit postings - 'ID: <n>' near the title and the Traffit form id behind 'Aplikuj'."
+    },
+    {
+      "key": "theprotocol",
+      "name": "theprotocol.it",
+      "url": "https://theprotocol.it/",
+      "region": "pl",
+      "notes": "Closed: redirect /szczegoly/praca/... -> /praca/..., 'Oferta wygasła' (HTTP 200). Refs: the body seldom has one; the external 'Aplikuj' link (eRecruiter, Traffit, company ATS) carries the form id."
+    },
+    {
+      "key": "bulldogjob",
+      "name": "bulldogjob.pl",
+      "url": "https://bulldogjob.pl/companies/jobs",
+      "region": "pl",
+      "notes": "Closed: 'Job expired DD.MM.YYYY' next to the posting (EN UI; the PL wording is not verified). Refs: external 'Apply' link carries the ATS id; look for 'Ref.' in the body."
+    },
+    {
+      "key": "rocketjobs",
+      "name": "rocketjobs.pl",
+      "url": "https://rocketjobs.pl/",
+      "region": "pl",
+      "notes": "Sister of justjoin, broader than IT. Closed: 'Oferta archiwalna' on the same URL; later HTTP 404 like justjoin. Refs: as justjoin - the ATS form id behind 'Apply'."
+    },
+    {
+      "key": "pracuj_pl",
+      "name": "pracuj.pl",
+      "url": "https://it.pracuj.pl/praca",
+      "region": "pl",
+      "notes": "Mostly corporate UoP; B2B filter unreliable - verify in body. Closed: 'Pracodawca zakończył zbieranie zgłoszeń na tę ofertę' / EN 'offer expired N months ago'. Refs: the posting id is in the URL (,oferta,<id>; one per location, all the same posting); employer ATS links (Sii 'Nr oferty JOB-XXXXX', sii.pl/oferty-pracy/id/<n>, eRecruiter) and 'Numer referencyjny' in the body."
+    },
+    {
+      "key": "inhire",
+      "name": "inhire.io",
+      "url": "https://inhire.io/",
+      "region": "pl",
+      "notes": "Refs: look for 'ID oferty' / reference in the body and the ATS id behind 'Aplikuj'."
+    },
+    {
+      "key": "linkedin",
+      "name": "LinkedIn",
+      "url": "https://www.linkedin.com/jobs/search/",
+      "region": "global",
+      "notes": "Open in shared browser context (logged in), one posting at a time - LinkedIn restricts accounts that look automated; no scripted requests, no API (with the linkedin-mcp plugin, use its tools instead). Many 'Remote' postings are EOR/full-time. Closed: page 'No longer accepting applications' / PL 'Kandydaci nie są już akceptowani', Apply button gone. Postings close within hours - check at scan time and again right before showing a batch (assets/crek-closed-check.mjs reads the open tab's text; anything but 'closed' means read the page). Refs: the body often ends with 'Job no. JOB-XXXXX', 'Req ID', 'Job Requisition ID R-12345' (Workday); the external 'Apply' button opens the employer's form in a new tab (or a /safety/go/?url= link) - its ATS id is the strongest ref. Easy Apply has no external id."
+    },
+    {
+      "key": "indeed_pl",
+      "name": "Indeed.pl",
+      "url": "https://pl.indeed.com/",
+      "region": "global",
+      "notes": "Refs: 'Apply on company site' link carries the ATS id; body may have 'Nr ref.'."
+    },
+    {
+      "key": "wellfound",
+      "name": "Wellfound",
+      "url": "https://wellfound.com/jobs",
+      "region": "global",
+      "notes": "Startups; check location eligibility per role. Refs: the job id is in the URL (/jobs/<id>-...); no ATS behind it."
+    },
+    {
+      "key": "weworkremotely",
+      "name": "WeWorkRemotely",
+      "url": "https://weworkremotely.com/",
+      "region": "global",
+      "notes": "Often US-only - check eligibility. Refs: the 'Apply' link usually goes to Greenhouse / Lever / Ashby - take the job id from it."
+    },
+    {
+      "key": "remoteok",
+      "name": "RemoteOK",
+      "url": "https://remoteok.com/",
+      "region": "global",
+      "notes": "Often US-only - check eligibility. Refs: the 'Apply' link usually goes to the company ATS - take the job id from it."
+    },
+    {
+      "key": "remotive",
+      "name": "Remotive",
+      "url": "https://remotive.com/remote-jobs",
+      "region": "global",
+      "notes": "Category pages narrow the list (e.g. /remote-jobs/devops). Refs: the 'Apply' link goes to the company ATS - take the job id from it."
+    },
+    {
+      "key": "euremotejobs",
+      "name": "EU Remote Jobs",
+      "url": "https://euremotejobs.com/",
+      "region": "global",
+      "notes": "EU time zones. Refs: the 'Apply' link goes to the company ATS - take the job id from it."
+    },
+    {
+      "key": "himalayas",
+      "name": "Himalayas",
+      "url": "https://himalayas.app/jobs",
+      "region": "global",
+      "notes": "Trap: every page, open or not, shows a 'Job expired?' feedback link - it is not a closed marker; check the employer's apply link. Refs: the employer's apply link carries the ATS job id."
+    },
+    {
+      "key": "workingnomads",
+      "name": "Working Nomads",
+      "url": "https://www.workingnomads.com/jobs",
+      "region": "global",
+      "notes": "Refs: the 'Apply' link goes to the company ATS - take the job id from it."
+    },
+    {
+      "key": "aijobs",
+      "name": "aijobs.net",
+      "url": "https://aijobs.net/",
+      "region": "global",
+      "notes": "AI/ML roles; many are pure data science or research - check the role family. Refs: the 'Apply' link goes to the company ATS - take the job id from it."
+    },
+    {
+      "key": "hn_whoishiring",
+      "name": "HN Who is hiring",
+      "url": "https://news.ycombinator.com/submitted?id=whoishiring",
+      "region": "global",
+      "notes": "Monthly thread, many startups; search the thread for your keywords and 'remote'. Refs: none in the comment; the linked careers page / ATS carries the job id."
+    },
+    {
+      "key": "arc_dev",
+      "name": "Arc.dev",
+      "url": "https://arc.dev/remote-jobs",
+      "region": "freelance",
+      "notes": "Senior contracts, USD rates. Refs: the job id is in the URL; no external ATS."
+    },
+    {
+      "key": "freelancermap",
+      "name": "freelancermap",
+      "url": "https://www.freelancermap.com/projects",
+      "region": "freelance",
+      "notes": "DE/AT/CH/LU projects; LU 'remote possible' often means commutable hybrid. Refs: agencies give a project / reference number in the body ('Ref.', 'Projekt-Nr.')."
+    },
+    {
+      "key": "malt",
+      "name": "Malt",
+      "url": "https://www.malt.com/",
+      "region": "freelance",
+      "notes": "FR/DE/ES freelance. Refs: none; compare by client and title."
+    },
+    {
+      "key": "ashby_search",
+      "name": "Ashby via search",
+      "url": "https://www.google.com/search?q=site%3Ajobs.ashbyhq.com",
+      "region": "ats-search",
+      "notes": "Optional - Google often answers automated searches with a CAPTCHA. If it does, run the same query on DuckDuckGo (https://duckduckgo.com/?q=site%3Ajobs.ashbyhq.com+your+keywords) or Bing (https://www.bing.com/search?q=site%3Ajobs.ashbyhq.com+your+keywords); if every engine blocks, skip the board and list it as not scanned. Startup ATS; postings often absent from boards. Add your keywords to the query (override url). Refs: the job uuid in jobs.ashbyhq.com/<company>/<uuid>."
+    },
+    {
+      "key": "greenhouse_search",
+      "name": "Greenhouse via search",
+      "url": "https://www.google.com/search?q=site%3Ajob-boards.greenhouse.io",
+      "region": "ats-search",
+      "notes": "Optional - Google often answers automated searches with a CAPTCHA. If it does, run the same query on DuckDuckGo (https://duckduckgo.com/?q=site%3Ajob-boards.greenhouse.io+your+keywords) or Bing (https://www.bing.com/search?q=site%3Ajob-boards.greenhouse.io+your+keywords); if every engine blocks, skip the board and list it as not scanned. Add your keywords to the query (override url). Closed: redirect to the company board with ?error=true. Refs: the job id in /jobs/<id> or ?gh_jid=<id>."
+    },
+    {
+      "key": "lever_search",
+      "name": "Lever via search",
+      "url": "https://www.google.com/search?q=site%3Ajobs.lever.co",
+      "region": "ats-search",
+      "notes": "Optional - Google often answers automated searches with a CAPTCHA. If it does, run the same query on DuckDuckGo (https://duckduckgo.com/?q=site%3Ajobs.lever.co+your+keywords) or Bing (https://www.bing.com/search?q=site%3Ajobs.lever.co+your+keywords); if every engine blocks, skip the board and list it as not scanned. Add your keywords to the query (override url). Refs: the job uuid in jobs.lever.co/<company>/<uuid>."
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+# Python bytecode (e.g. after running assets/cv-template/build_cv.py)
+__pycache__/
+*.pyc
+
+# What the CV template produces when run in place (it is meant to be copied per job/variant first):
+# the page, the PDF and the candidate's photo or any other picture dropped next to it
+assets/cv-template/*.html
+assets/cv-template/*.htm
+assets/cv-template/*.pdf
+assets/cv-template/*.jpeg
+assets/cv-template/*.jpg
+assets/cv-template/*.png
+assets/cv-template/*.webp
+assets/cv-template/*.gif
+assets/cv-template/*.svg
+
+# Personal data that must never land here: crek.config.json and the pipeline database
+crek.config.json
+*.db
+*.db-wal
+*.db-shm
+
+# The web app's config.php (API token, database password) belongs to the user's own copy of
+# assets/crek-php, outside the plugin (assets/crek-php/README.md, level 2). Ignored here only as a
+# safety net, in case someone fills it in place anyway.
+assets/crek-php/config.php
