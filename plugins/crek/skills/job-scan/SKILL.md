@@ -54,7 +54,9 @@ match score is computed, and `../apply/references/reporting.md` for the shape of
    list.
 3. **Browse, don't curl** — boards 403 plain HTTP clients. Apply the board's own filters
    first (category, remote, contract type, salary) to cut the volume; listing pages usually
-   lazy-load — scroll in a loop while collecting links.
+   lazy-load — scroll in a loop while collecting links. The whole scan runs in **one browser
+   window** — set it up before the first board and before any agent starts (*One browser window
+   per scan* below).
 4. **Title-level triage** (cheap): drop only what is plainly not the user's kind of role — a role
    family in `criteria.soft.role_families.avoid`, or a posting closed to the candidate's country.
    Postings that fail a blocker (wrong contract form, work mode, rate, a reject-listed core
@@ -164,6 +166,53 @@ match score is computed, and `../apply/references/reporting.md` for the shape of
    `duplicate`, a likely one goes under the table in "Already in the pipeline", and neither is a
    row the user is asked to rule on.
 
+## One browser window per scan
+
+In chrome-shared every new `isolatedContext` name opens a new Chrome window. A scan split across
+agents, each picking its own name, pops up one window per agent over the user's work — plus a
+LinkedIn login window when that part runs alongside them. Keep the whole scan in one window,
+whether it runs in agents or in this session alone. This is a rule for you to follow; nothing in
+the plugin enforces it.
+
+1. **Anchor tab first.** Before the first board and before any agent starts, the main session
+   opens one tab: `new_page` with `url: "about:blank"` and `isolatedContext` set to a name unique
+   to this scan, `crek-scan-YYYYMMDD-HHMM` (e.g. `crek-scan-20261103-2130`). Context names are
+   shared by every Claude session on the computer, so a generic name such as `crek-scan` can land
+   in another session's window. This tab opens the scan's window and holds it open; note its
+   `pageId`. Optionally title it so the user recognises the window: `evaluate_script` on that
+   `pageId` with `() => { document.title = 'CREK scan'; }`.
+2. **Every board page in that context, in the background.** `new_page` with the same
+   `isolatedContext` and `background: true`: the tab joins the anchor's window and does not come
+   to the front. Never another context name — that is another window; and never a board page
+   without `isolatedContext` — that is the user's own profile, where cookie consent is clicked in
+   their name. Work only on the `pageId`s you opened (the `new_page` reply marks the new tab
+   `[selected]`), and close your tabs when a board is done.
+3. **Give every agent the name and the rules.** Paste this into each agent's prompt, with the
+   context name and the anchor's `pageId` filled in:
+
+   > Browser: only the chrome-shared tools (`mcp__plugin_chrome-shared_browser__*`). Open tabs only
+   > with `new_page` with `isolatedContext: "<crek-scan-…>"` and `background: true` — never another
+   > context name, never without `isolatedContext`. Work only on the `pageId`s you opened (the
+   > `new_page` reply marks your new tab `[selected]`); every other tab belongs to someone else.
+   > Close your tabs with `close_page` when you finish each board. Never close page `<anchor
+   > pageId>` (about:blank, "CREK scan") — it holds the window. Do not open LinkedIn, Indeed or any
+   > board that needs a login, in the browser or through LinkedIn MCP tools — the main session does
+   > those. Do not start agents of your own.
+
+   If the window disappears anyway (the anchor closed by mistake), the next `new_page` in the
+   context opens a new one: that tab becomes the anchor. Do not open a second window next to it.
+4. **Boards that need a login: the main session, never in parallel with the agents.** LinkedIn,
+   Indeed and any other board where the scan needs the user's cookies or session are handled by
+   the main session in the default context (no `isolatedContext`, the shared logged-in profile)
+   or through the `linkedin-mcp` tools — before the agents start or after all of them have
+   finished, never while they run. If `linkedin-mcp` opens its login window (its session
+   expired), stop the LinkedIn part and ask the user to sign in; on a CAPTCHA, a security check
+   or a warning, stop and tell the user (*LinkedIn* below).
+5. **End of the scan.** When the last agent has reported (or your own last board is done), list
+   the pages, close any tab still open in the scan's context, then close the anchor — the window
+   goes away. The scan window is for reading, not for the user: the batch the user looks at is
+   opened afterwards in the shared context, as in *Presenting pages to the user*.
+
 ## Closed postings (`assets/crek-closed-check.mjs`)
 
 Postings close at any time — LinkedIn ones within hours of being found. A posting that was open
@@ -217,7 +266,8 @@ CREK calls no LinkedIn API of its own. A LinkedIn posting is checked in one of t
   external Apply button opens the employer's form in a new tab: click it when you need the apply
   target (refs, `apply_url`), read the URL, close that tab.
 
-Either way: no scripted requests to LinkedIn, no bulk page loads — LinkedIn restricts accounts
+Either way it is the main session's part of the scan, never an agent's and never while scan
+agents run (*One browser window per scan* above). And either way: no scripted requests to LinkedIn, no bulk page loads — LinkedIn restricts accounts
 that look automated. Open only the postings you need, one at a time, with pauses between them.
 A logged-out page is handled as in *LinkedIn* in `../apply/references/ats-playbook.md`; on a
 CAPTCHA, a security check or a warning, stop and tell the user (never solve or click through it on

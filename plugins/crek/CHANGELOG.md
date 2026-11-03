@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.11.3 — 2026-11-03
+
+- `job-scan`: new section *One browser window per scan*. A scan split across agents opened one
+  Chrome window per agent, because each agent picked its own `isolatedContext` name and in
+  chrome-shared every new name is a new window; a LinkedIn login window opened alongside them.
+  Now the main session opens an anchor tab (`about:blank`) in one context named for this scan
+  (`crek-scan-YYYYMMDD-HHMM` — context names are shared by all Claude sessions on the computer),
+  and every board page goes into that context with `new_page` `background: true`, so it joins the
+  anchor's window without coming to the front. Each agent gets the name and the rules in its
+  prompt (a ready text is in the skill): only that context, in the background, only its own
+  `pageId`s, its tabs closed after each board, the anchor left alone, no agents of its own. The
+  anchor holds the window until the end of the scan, when the main session closes it. The same
+  applies to a scan without agents.
+- Boards that need a login (LinkedIn, Indeed and the like) are the main session's part, in the
+  default context or through `linkedin-mcp`, before or after the agents — never in parallel. A
+  `linkedin-mcp` login window stops the LinkedIn part until the user signs in.
+- A rule in the skill, not a hook; chrome-shared is unchanged.
+
 ## 1.11.2 — 2026-11-03
 
 - Bootstrap interview (`skills/apply/references/bootstrap.md`): right after the `linkedin-mcp`
