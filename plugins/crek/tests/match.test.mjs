@@ -127,3 +127,56 @@ test('the same URL under two different companies is a suspicion, not a duplicate
     .find((x) => x.id === 15).exact, true);
   assert.equal(hitsFor({ title: 'Backend Engineer', url: 'https://careers.example.org/apply' }).find((x) => x.id === 15).exact, true);
 });
+
+// nofluffjobs gives every city or region of one posting a URL of its own. Fictional slugs, companies
+// and references only.
+const NFJ = 'https://nofluffjobs.com/pl/job/';
+const NFJ_JOBS = [
+  { id: 20, title: 'Mid/Senior DevOps', agency: 'Contoso', status: 'applied',
+    source_url: `${NFJ}mid-senior-devops-contoso-remote`, found_at: '2026-10-10 10:00:00' },
+  { id: 21, title: 'DevOps Engineer', agency: 'Tailspin Group', status: 'declined',
+    source_url: `${NFJ}devops-engineer-tailspin-group-gdansk-9`, description: 'analysis\nREF: nofluffjobs:ZKWPTRMB',
+    found_at: '2026-10-11 10:00:00' },
+  { id: 22, title: 'DevOps Engineer', agency: 'Tailspin Group', status: 'new',
+    source_url: `${NFJ}devops-engineer-tailspin-group-remote-3`, description: 'REF: nofluffjobs:QX7KD2PA',
+    found_at: '2026-10-12 10:00:00' },
+];
+const nfjHits = (cand) => resultsJson(matchCandidates([cand], NFJ_JOBS))[0].matches;
+
+test('nofluffjobs: another city page of the same posting is flagged, not a duplicate', () => {
+  const hit = nfjHits({ title: 'Mid/Senior DevOps', agency: 'Contoso', url: `${NFJ}mid-senior-devops-contoso-warszawa` })
+    .find((x) => x.id === 20);
+  assert.equal(hit.exact, false);
+  assert.equal(hit.other_place, 'warszawa / remote');
+  assert.match(hit.reasons[0], /nofluffjobs page of another city/);
+});
+
+test('nofluffjobs: the posting reference (kind nofluffjobs, no digit needed) is a hard hit', () => {
+  const hits = nfjHits({ title: 'DevOps Engineer', agency: 'Tailspin Group', url: `${NFJ}devops-engineer-tailspin-group-gdynia-7`,
+    ref: 'nofluffjobs:ZKWPTRMB' });
+  const hit = hits.find((x) => x.id === 21);
+  assert.equal(hit.exact, true);
+  assert.deepEqual(hit.shared_refs, ['nofluffjobs:ZKWPTRMB']);
+  assert.match(hit.reasons.join('; '), /same posting number nofluffjobs:ZKWPTRMB/);
+  // the other Tailspin posting with the same title has another reference: not a duplicate
+  assert.equal(hits.find((x) => x.id === 22).exact, false);
+});
+
+test('nofluffjobs: the reference read from the og:image URL in the body counts too', () => {
+  const hit = nfjHits({ title: 'DevOps Engineer', agency: 'Tailspin Group', url: `${NFJ}devops-engineer-tailspin-group-krakow`,
+    text: 'og:image https://nofluffjobs.com/pl/thumbnail-image/posting/QX7KD2PA' }).find((x) => x.id === 22);
+  assert.equal(hit.exact, true);
+});
+
+test('urls: the other addresses of a posting (its other NFJ city pages) are compared like url', () => {
+  const hit = nfjHits({ title: 'Mid/Senior DevOps', agency: 'Contoso', url: `${NFJ}mid-senior-devops-contoso-warszawa`,
+    urls: [`${NFJ}mid-senior-devops-contoso-lower-silesian`, `https://nofluffjobs.com/job/mid-senior-devops-contoso-remote`] })
+    .find((x) => x.id === 20);
+  assert.equal(hit.exact, true);
+  assert.equal(hit.other_place, null);
+});
+
+test('nofluffjobs: the same title at another company is not another city page', () => {
+  const hits = nfjHits({ title: 'Mid/Senior DevOps', agency: 'Fabrikam', url: `${NFJ}mid-senior-devops-fabrikam-warszawa` });
+  assert.ok(!hits.some((x) => x.other_place || x.exact));
+});

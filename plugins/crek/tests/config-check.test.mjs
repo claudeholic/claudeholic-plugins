@@ -143,3 +143,27 @@ test('git: a tracked config is a warning', { skip: spawnSync('git', ['--version'
   r = checkAt(BASE, { at: repo });
   assert.match(r.out, /WARNING\s+git tracks crek\.config\.json — personal data and passwords do not belong in a repository/);
 });
+
+test('browser.browsers and mail: optional notes when missing, errors when wrong', () => {
+  let r = check(BASE);
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /note\s+browser\.browsers is not set/);
+  assert.match(r.out, /note\s+mail is not set/);
+  r = check({ ...BASE,
+    browser: { browsers: [{ name: 'chrome-shared', type: 'chrome-shared' }, { name: 'Chromium', type: 'cdp', cdp_port: 9333 }] },
+    mail: { access: 'mcp', tool_prefix: 'mcp__mail__', read_verification_codes: true } });
+  assert.equal(r.code, 0, r.out);
+  assert.doesNotMatch(r.out, /browser\.browsers|mail /);
+  r = check({ ...BASE, browser: { browsers: [{ name: 'Chromium', type: 'cdp' }] }, mail: { access: 'imap' } });
+  assert.equal(r.code, 1);
+  assert.match(r.out, /ERROR\s+browser\.browsers\[0\] is a cdp browser without cdp_port/);
+  assert.match(r.out, /ERROR\s+mail\.access is "imap"/);
+});
+
+test('boards: a listing with an unknown stop rule is an error, a known one passes', () => {
+  let r = check({ ...BASE, boards: { override: { justjoin: { listing: { stop_rule: 'time_filter' } } } } });
+  assert.equal(r.code, 0, r.out);
+  r = check({ ...BASE, boards: { extra: [{ key: 'acme_jobs', name: 'Acme Jobs', url: 'https://jobs.example.org', listing: { stop_rule: 'whenever' } }] } });
+  assert.equal(r.code, 1);
+  assert.match(r.out, /ERROR\s+boards\.extra\[0\]\.listing\.stop_rule is "whenever"/);
+});

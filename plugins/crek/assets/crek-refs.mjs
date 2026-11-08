@@ -18,6 +18,14 @@
  * Two refs are the same when the values are equal and the kinds are compatible: equal, or one of
  * them is "ref" (a Workday "R-12345" in the body is the same as the R12345 in the apply URL).
  *
+ * Some kinds are the board's own number of the posting rather than a form id (POSTING_ID_KINDS):
+ * pracuj.pl `,oferta,<id>`, Sii `id/<n>`, and nofluffjobs' posting reference — an 8-character code
+ * such as "QX7KD2PA" that NFJ keeps for one posting across all its city pages. NFJ gives every
+ * city or region of a posting an address of its own (`/pl/job/devops-engineer-contoso-warszawa`,
+ * `…-contoso-remote`, `…-contoso-lower-silesian`), so the URL names a city page, not the posting;
+ * the reference is on the page (its `og:image` is `…/thumbnail-image/posting/<ref>`) and in the
+ * board's posting data. It may have no digit at all ("ZKWPTRMB"), unlike every other ref.
+ *
  * Where the pipeline keeps them: a line in `description` starting with "REF:", entries separated
  * by ";", each "kind:value" or just the value, e.g.
  *   REF: JOB-7K2QX; greenhouse:7712345; traffit:48213
@@ -29,6 +37,12 @@
 export function normRef(value) {
   return String(value ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '');
 }
+
+/** Kinds that are a board's own number of the posting, not an application-form id. */
+export const POSTING_ID_KINDS = new Set(['nofluffjobs', 'pracuj', 'sii']);
+
+// Kinds whose values may have no digit (every other ref needs one, or "Reference: none" would count).
+const NO_DIGIT_KINDS = new Set(['nofluffjobs']);
 
 /** Short purely numeric ids (Traffit form 48213, a site id like 10042, darize 4321) collide across tenants. */
 export function isWeakRef(ref) {
@@ -60,7 +74,14 @@ const URL_RULES = [
   ['pracuj', /pracuj\.pl\/(?:[^\s"']*?,oferta,|aplikowanie\/formularz\/)(\d{7,})/gi],
   ['hrappka', /hrappka\.pl\/oferta\/[^/\s]+\/(\d+)/gi],
   ['deel', /jobs\.deel\.com\/[^/\s]+\/job-details\/([0-9a-f-]{36})/gi],
+  // nofluffjobs: the posting reference, on the page's og:image and in its own data links.
+  ['nofluffjobs', /nofluffjobs\.com\/(?:[a-z]{2}\/)?(?:thumbnail-image\/posting|api\/joboffers)\/([a-z0-9]{8})(?![a-z0-9])/gi],
 ];
+
+// "greenhouse:7712345", "nofluffjobs:QX7KD2PA" written anywhere in a text — the REF: line format,
+// also used by the dated duplicate notes ("hard duplicate of #812 — shared: greenhouse:7712345").
+const KIND_TOKEN_RE = new RegExp(
+  String.raw`(?<![a-z0-9_])(${[...new Set(URL_RULES.map(([k]) => k))].join('|')}):([A-Za-z0-9][A-Za-z0-9._\-]{2,63})`, 'gi');
 
 // ---------------------------------------------------------------- reference numbers in text
 
@@ -90,7 +111,7 @@ function cleanValue(v) {
 
 function push(out, seen, kind, raw) {
   const value = normRef(raw);
-  if (!value || !/\d/.test(value) || value.length < 3) return;
+  if (!value || value.length < 3 || (!/\d/.test(value) && !NO_DIGIT_KINDS.has(kind))) return;
   const key = `${kind}|${value}`;
   if (seen.has(key)) return;
   seen.add(key);
@@ -128,6 +149,7 @@ export function extractRefs(text, out = [], seen = new Set()) {
     }
   }
   urlRefs(s, out, seen);
+  for (const m of s.matchAll(KIND_TOKEN_RE)) push(out, seen, m[1].toLowerCase(), cleanValue(m[2]));
   for (const m of s.matchAll(LABEL_RE)) push(out, seen, 'ref', cleanValue(m[1]));
   for (const m of s.matchAll(BARE_ID_RE)) push(out, seen, 'ref', m[1]);
   for (const re of FORMAT_RULES) for (const m of s.matchAll(re)) push(out, seen, 'ref', m[0]);
@@ -183,27 +205,70 @@ function isTracking(key) {
   return TRACKING_PARAMS.includes(k) || TRACKING_PREFIXES.some((p) => k.startsWith(p));
 }
 
+// ---------------------------------------------------------------- the posting a board URL names
+
+/**
+ * Boards whose URL itself names the posting (or, on nofluffjobs, one city page of it). Each entry:
+ * portal, host, id(URL) → the posting id or null, canonical(id, host) → the comparable address.
+ * Every other part of the URL (slug words, search parameters, tracking) is noise for these boards.
+ *   LinkedIn  /jobs/view/<slug>-<id>, ?currentJobId=<id> on search pages → linkedin.com/jobs/view/<id>
+ *   Indeed    ?jk=<id> / ?vjk=<id>                                       → <host>/viewjob?jk=<id>
+ *   NFJ       /pl/job/<slug>, /job/<slug>, /en/job/<slug>                → nofluffjobs.com/job/<slug>
+ * The NFJ slug is one city's page: the posting behind several of them is told by its reference
+ * (kind "nofluffjobs", above) or by nfjPlaceVariant() below.
+ */
+export const PORTAL_POSTINGS = [
+  {
+    portal: 'linkedin',
+    host: /(^|\.)linkedin\.com$/,
+    id: (u) => {
+      const m = u.pathname.match(/^\/jobs\/(?:view|collections\/[^?]*)\/?(?:[^/?]*-)?(\d{6,})/);
+      const id = m?.[1] ?? u.searchParams.get('currentJobId');
+      return id && /^\d{6,}$/.test(id) ? id : null;
+    },
+    canonical: (id) => `linkedin.com/jobs/view/${id}`,
+  },
+  {
+    portal: 'indeed',
+    host: /(^|\.)indeed\.[a-z.]+$/,
+    id: (u) => (u.searchParams.get('jk') || u.searchParams.get('vjk') || '').toLowerCase() || null,
+    canonical: (id, host) => `${host}/viewjob?jk=${id}`,
+  },
+  {
+    portal: 'nofluffjobs',
+    host: /(^|\.)nofluffjobs\.com$/,
+    id: (u) => u.pathname.match(/^\/(?:[a-z]{2}\/)?job\/([a-z0-9][a-z0-9-]*[a-z0-9])\/?$/i)?.[1].toLowerCase() ?? null,
+    canonical: (id) => `nofluffjobs.com/job/${id}`,
+  },
+];
+
+/** {portal, id, canonical} when the URL is a posting address of a board in PORTAL_POSTINGS, else null. */
+export function postingKey(url) {
+  if (!url) return null;
+  let u;
+  try { u = new URL(String(url).trim()); } catch { return null; }
+  const host = u.host.toLowerCase();
+  for (const p of PORTAL_POSTINGS) {
+    if (!p.host.test(host)) continue;
+    const id = p.id(u);
+    if (id) return { portal: p.portal, id, canonical: p.canonical(id, host) };
+  }
+  return null;
+}
+
 /**
  * Comparable form of a URL: lowercase host and path, no fragment, no trailing slash, no tracking
- * parameters; the remaining parameters sorted, so their order does not matter. Two boards with
- * the posting in the address itself are reduced to that id: LinkedIn (`/jobs/view/<slug>-<id>`,
- * `?currentJobId=<id>` on search pages) → `linkedin.com/jobs/view/<id>`, Indeed (`jk` / `vjk`) →
- * `<host>/viewjob?jk=<id>`. Only for comparing — the URL stored in the pipeline stays as it was.
+ * parameters; the remaining parameters sorted, so their order does not matter. Boards with the
+ * posting in the address itself (PORTAL_POSTINGS: LinkedIn, Indeed, nofluffjobs) are reduced to
+ * that id. Only for comparing — the URL stored in the pipeline stays as it was.
  */
 export function canonicalUrl(url) {
   if (!url) return null;
   try {
     const u = new URL(String(url).trim());
     const host = u.host.toLowerCase();
-    if (/(^|\.)linkedin\.com$/.test(host)) {
-      const m = u.pathname.match(/^\/jobs\/(?:view|collections\/[^?]*)\/?(?:[^/?]*-)?(\d{6,})/);
-      const id = m?.[1] ?? u.searchParams.get('currentJobId');
-      if (id && /^\d{6,}$/.test(id)) return `linkedin.com/jobs/view/${id}`;
-    }
-    if (/(^|\.)indeed\.[a-z.]+$/.test(host)) {
-      const jk = u.searchParams.get('jk') || u.searchParams.get('vjk');
-      if (jk) return `${host}/viewjob?jk=${jk.toLowerCase()}`;
-    }
+    const key = postingKey(u.href);
+    if (key) return key.canonical;
     const params = [];
     for (const [k, v] of u.searchParams) {
       if (v && !isTracking(k)) params.push(`${k.toLowerCase()}=${v}`);
@@ -213,6 +278,47 @@ export function canonicalUrl(url) {
   } catch {
     return String(url).trim().toLowerCase().replace(/[?#].*$/, '').replace(/\/+$/, '') || null;
   }
+}
+
+// nofluffjobs city / region parts of a slug, used only when the company is not found in it.
+const NFJ_PLACES = [
+  'remote', 'warszawa', 'warsaw', 'krakow', 'wroclaw', 'gdansk', 'gdynia', 'sopot', 'trojmiasto',
+  'poznan', 'lodz', 'katowice', 'gliwice', 'szczecin', 'bydgoszcz', 'torun', 'lublin', 'bialystok',
+  'rzeszow', 'kielce', 'olsztyn', 'opole', 'czestochowa', 'radom', 'zielona-gora', 'bielsko-biala',
+  'lower-silesian', 'kuyavian-pomeranian', 'lubusz', 'lesser-poland', 'masovian', 'subcarpathian',
+  'podlaskie', 'pomeranian', 'west-pomeranian', 'silesian', 'holy-cross', 'warmian-masurian',
+  'greater-poland',
+].sort((a, b) => b.length - a.length);
+
+/** {stem, place} of an NFJ slug: the title-and-company part and the city / region part (a trailing
+ *  "-7" counter dropped). The company slug anchors the cut; without it, a known place name. */
+function nfjParts(slug, companySlugs) {
+  const s = slug.replace(/-\d{1,3}$/, '');
+  for (const co of companySlugs) {
+    if (s.endsWith(`-${co}`)) return { stem: s, place: '' }; // a posting without a place in its slug
+    const i = s.lastIndexOf(`-${co}-`);
+    if (i > 0) return { stem: s.slice(0, i + co.length + 1), place: s.slice(i + co.length + 2) };
+  }
+  const place = NFJ_PLACES.find((p) => s.endsWith(`-${p}`));
+  return place ? { stem: s.slice(0, -(place.length + 1)), place } : null;
+}
+
+/**
+ * Are two nofluffjobs addresses city pages of one posting? NFJ builds the slug from title, company
+ * and place ("devops-engineer-contoso-warszawa", "devops-engineer-contoso-remote-3"), so the same
+ * title-and-company part with another place is very likely the same posting. Very likely, not
+ * proven: an agency can run several postings under one title (that is what the counter is for) —
+ * the reference decides. Returns {a, b} (the two places) or null. `companySlugs`: the company and
+ * agency names of both sides in slug form ("tailspin-group"), longest first.
+ */
+export function nfjPlaceVariant(urlA, urlB, companySlugs = []) {
+  const ka = postingKey(urlA);
+  const kb = postingKey(urlB);
+  if (ka?.portal !== 'nofluffjobs' || kb?.portal !== 'nofluffjobs' || ka.id === kb.id) return null;
+  const pa = nfjParts(ka.id, companySlugs);
+  const pb = nfjParts(kb.id, companySlugs);
+  if (!pa || !pb || !pa.stem || pa.stem !== pb.stem || pa.place === pb.place) return null;
+  return { a: pa.place || '-', b: pb.place || '-' };
 }
 
 // Hosts of applicant tracking systems whose address alone does not name the posting: one form

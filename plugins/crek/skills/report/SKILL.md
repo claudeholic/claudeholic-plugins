@@ -71,13 +71,24 @@ reporting.md), with its tab number in the Tab column:
    gone), open one with its own anchor (*The batch window* in reporting.md) and use it for the
    following batches. One batch = one window, plus the user's regular window only for postings
    that need their login (LinkedIn, Indeed and the like — shared context, no `isolatedContext`).
+   Those open one after another, never several at once: each loaded, read and made readable
+   before the next, with a pause of a few seconds between them, and no other agent on those
+   sites meanwhile (*Boards you are signed in to* in `../apply/references/ats-playbook.md`).
    With chrome-shared, open the rest with the batch window's `isolatedContext` and
    `background: true`, in table order;
    with raw CDP, focus a tab of that window before `Target.createTarget` so new tabs land there,
    and verify with `Browser.getWindowForTarget`.
 3. Make every page readable: dismiss cookie banners ("reject" / "only necessary" first, then
    close / X, "accept" only when there is nothing else) and overlays, reload once on a Cloudflare
-   check (see *Presenting pages to the user* in the job-scan skill).
+   check (see *Presenting pages to the user* in the job-scan skill). A check that stays — a
+   CAPTCHA or an anti-bot page waiting for a click — is never solved or clicked through: open that
+   posting in the next browser of `browser.browsers` (one tab of your own, in the background; the
+   rules for the user's own profile when the entry has `user_profile: true`), write its Tab cell
+   as `<browser name>: <tab title>` and say so in the line above the table; blocked in every
+   browser of the list → close the tab, keep the row with `—` in Tab and say under the table what
+   blocked it and which browsers were tried (*Codes by e-mail, CAPTCHAs and the browser list* in
+   `../apply/references/ats-playbook.md`). A page asking for a code or a link by e-mail follows
+   the same section.
 4. Re-read the tab numbers right before printing (chrome-shared: the `[N]` title prefix via
    `list_pages`; batch-window tabs: their position, *Tab numbers* in *The batch window*). Tabs
    opened by other agents in between do not belong in the table.

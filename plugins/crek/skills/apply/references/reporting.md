@@ -159,7 +159,8 @@ table, "open the first 10", postings opened on request.
 - **Postings that need the user's login to show** — LinkedIn, Indeed and other boards whose page
   is logged out or behind a login wall without the user's session (an isolated context has no
   cookies) — are the exception: they open in the shared context (no `isolatedContext`), in the
-  user's regular window, as before. Everything else goes into the batch window; a batch without
+  user's regular window, as before — one after another, each loaded and read before the next,
+  with pauses (*Boards you are signed in to* in `ats-playbook.md`). Everything else goes into the batch window; a batch without
   such postings is one window.
 - **Tab numbers.** chrome-shared numbers (`[N]` in the title) only the tabs of the shared
   profile; tabs in an isolated context have no number. A batch-window tab is therefore given by
@@ -320,7 +321,14 @@ the table, only when the closed check took something out (see *Closed postings*)
 posting, `#id Company — Title: report.value.closed`. At scan time a closed posting goes into
 *Dropped at title level* instead, with the same value as its reason.
 
-**Boards scanned** — the names of the boards used, then, on its own line under
+**Boards scanned** — one line per board used: its name, then the stop rule applied and why the
+reading stopped (*How far to go on each board* in the job-scan skill), worded with
+`report.value.stop_time_filter`, `report.value.stop_relevance_drop`, `report.value.stop_date_order`,
+`report.value.stop_order_broken`, `report.value.stop_limit` or `report.value.low_quality_search`
+(EN `justjoin.it — time filter 7 days: the whole filtered list read (64 postings)`; PL
+`Himalayas — niska jakość wyszukiwania (sortowanie nie ściśle po dacie, brak filtra czasu):
+przeczytane 120 ofert, tyle, ile realnie się dało`); a board stopped by a block says so instead,
+with the browsers tried. Then, on its own line under
 `report.section.boards_disabled` (EN *Skipped — disabled in config* / PL *Pominięte — wyłączone
 w configu*), the boards in `boards.disabled`. Omit that line when nothing is disabled.
 

@@ -183,8 +183,11 @@ const READ_PAGE = `(() => {
     const href = el.href || el.getAttribute('data-href') || el.closest('a[href]')?.href || '';
     if (href) links.push(href);
   }
+  // nofluffjobs keeps its posting reference out of the text: the og:image URL carries it.
+  const meta = [...document.querySelectorAll('meta[property="og:image"], meta[name="twitter:image"]')]
+    .map((m) => m.getAttribute('content')).filter(Boolean);
   return { url: location.href, title: document.title, text: panel ?? (document.body ? document.body.innerText : ''),
-           panel: panel !== null, links };
+           panel: panel !== null, links, meta };
 })()`;
 
 /** Evidence from one page: refs and apply targets. */
@@ -193,7 +196,7 @@ function evidence(seen) {
   const out = [];
   const keys = new Set();
   extractRefs(seen.text ?? '', out, keys);
-  for (const u of [seen.url, ...applyUrls]) urlRefs(u, out, keys);
+  for (const u of [seen.url, ...applyUrls, ...(seen.meta ?? [])]) urlRefs(u, out, keys);
   return { refs: out, applyUrls };
 }
 

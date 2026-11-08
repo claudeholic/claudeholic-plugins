@@ -64,8 +64,9 @@ The message when it is missing, in the user's language (Polish unless they wrote
   Patchright-managed Chromium) that none of CREK's tools can drive, so the LinkedIn password the
   next question offers to store cannot be used there: when that window opens, tell the user. Do
   not call the LinkedIn tools during the interview to "test" them. From the first use the rules
-  in *LinkedIn* in `ats-playbook.md` apply: low volume, no bulk searches; on a CAPTCHA, a security
-  check or a warning, stop and tell the user.
+  in *LinkedIn* and *Boards you are signed in to* in `ats-playbook.md` apply: one call at a time,
+  never in parallel with other LinkedIn work, no bulk searches; on a CAPTCHA, a security check or
+  a warning, stop and tell the user.
 - **"Skip" ends the topic.** Do not ask again and do not record the answer anywhere — the
   interview runs once, and without the plugin the other skills simply use the browser for
   LinkedIn. Whatever the answer, go on to the LinkedIn login question.
@@ -83,7 +84,7 @@ CREK signs in there with `credentials.linkedin` from the config (*LinkedIn* in
 > the browser has no LinkedIn session. Note: the password reaches the model (Anthropic) like the
 > rest of the config. If you'd rather not, you'll sign in yourself when I ask.
 
-- **Yes** — take the login (usually the e-mail) and the password, and write them in step 11 as
+- **Yes** — take the login (usually the e-mail) and the password, and write them in step 12 as
   `"credentials": {"linkedin": {"user": "...", "password": "...", "login_method": "password"}}`.
   Do not repeat the password back in the conversation and do not sign in to "test" it.
 - **No** — store nothing. When the browser later has no LinkedIn session, ask the user to sign in
@@ -122,7 +123,35 @@ CREK signs in there with `credentials.linkedin` from the config (*LinkedIn* in
    an account and none exists yet, may Claude create one on its own (`auto`), or should it ask
    each time (`ask`)? Not set means `ask`. Password resets of existing accounts are always asked
    about, whatever the answer.
-9. **Database backend.** Default to `sqlite` and only go further if the user asks — the web UI is
+9. **Mail and browsers** (`mail`, `browser.browsers`) — what CREK may use when a site sends a code
+   by e-mail or puts up a CAPTCHA. Ask, a few at a time:
+   - **Mail access.** Look first: mail tools among your tools or deferred tools — a claude.ai
+     connector (e.g. Gmail: `mcp__claude_ai_Gmail__*`) or a mail MCP server. Name what you see and
+     ask whether this is the candidate's job-hunt mailbox (the one in `candidate.email`). Yes →
+     `"mail": {"access": "mcp", "name": "...", "tool_prefix": "...", "search_tool": "...",
+     "read_tool": "..."}` (Gmail connector: `search_threads`, `get_message`). No tools, or another
+     mailbox → `"access": "none"`; a connector can be added later in claude.ai (Settings,
+     *Connectors*) and set up with the `crek:browsers` skill.
+   - **Permission** (`mail.read_verification_codes`, only with access): may CREK read a
+     verification code or link from the mailbox on its own, or should it ask each time? Say what
+     "on its own" means: the newest message from the site it is signing in to, read only, only the
+     code or that site's one verification link — never anything else in the mailbox. Not set means
+     ask.
+   - **Browsers, in the order of use.** chrome-shared is the default and the first. Ask whether
+     to add a fallback browser for pages that block chrome-shared with a CAPTCHA or an anti-bot
+     check — none (only chrome-shared), one, or several in order. For each: which browser, its
+     debugging port, which profile — **recommend a separate profile** and say plainly what a
+     debugging port on the everyday profile means (*Working in another browser* in
+     `ats-playbook.md`: every program on the machine can drive it and read every site it is
+     signed in to); whether it is the user's own profile (`user_profile`); the command that starts
+     it with the port (`start_command`) and whether CREK may run it itself (`may_start`). Google
+     Chrome 136 and later ignores `--remote-debugging-port` on its default profile directory;
+     other Chromium-based browsers may not — the check tells.
+   Write `browser.browsers` with chrome-shared first (`{"name": "chrome-shared", "type":
+   "chrome-shared"}`) and the fallbacks after it. After step 12, offer to verify it all with the
+   `crek:browsers` skill (each port answers, one background tab opened and closed, the mail tools
+   answer). An answer "skip" leaves both out: chrome-shared alone, codes asked from the user.
+10. **Database backend.** Default to `sqlite` and only go further if the user asks — the web UI is
    a convenience, not a requirement. Whatever the backend, every skill reads and writes it through
    `assets/crek-db.mjs` (see `database.md`).
    - `sqlite` (default, zero setup, Node >= 22.13): `"db": {"backend": "sqlite", "path_or_url":
@@ -155,10 +184,10 @@ CREK signs in there with `credentials.linkedin` from the config (*LinkedIn* in
    MySQL + web-server route only to users who want the board reachable from other devices; it
    needs the token (always) and HTTPS, basic auth optionally. See `assets/crek-php/README.md`
    for all three levels.
-10. **Tooling**: any house style for user-facing output (`presentation.rules`). Resolve the browser
+11. **Tooling**: any house style for user-facing output (`presentation.rules`). Resolve the browser
    binary used as the HTML->PDF fallback with `command -v` and store it — do not assume
    `google-chrome` exists.
-11. Write all of it to `crek.config.json` in the format of `assets/crek.schema.json`
+12. Write all of it to `crek.config.json` in the format of `assets/crek.schema.json`
     (`version: 2`), `chmod 600` it, keep it out of version control (below), run the config check
     and confirm to the user. Never ask for these again — future sessions read the file.
 
@@ -175,6 +204,9 @@ See `assets/crek.schema.json` for every field, with a note on each explaining wh
   against a CV written for it returns a perfect match and means nothing.
 - `presentation.language` — the language you report and write to the user in. Ask explicitly; do
   not infer it from the posting or the candidate's location.
+- `browser.browsers` — the order is the order of use: the first entry does all the work, the
+  next ones are only tried after a CAPTCHA or an anti-bot check in the one before. An everyday
+  profile on the list is the user's informed choice, never a default.
 - `browser.pdf_command` — resolve once with `command -v` from `google-chrome`,
   `google-chrome-stable`, `chromium`, `chromium-browser`, `brave-browser` and store the hit.
 

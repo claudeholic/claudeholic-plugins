@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { extractRefs, urlRefs, explicitRefs, sameRef, isWeakRef, fmtRef, normRef, canonicalUrl, sameUrlPosting, atsOf } from '../assets/crek-refs.mjs';
+import {
+  extractRefs, urlRefs, explicitRefs, sameRef, isWeakRef, fmtRef, normRef, canonicalUrl, sameUrlPosting, atsOf,
+  postingKey, nfjPlaceVariant, POSTING_ID_KINDS,
+} from '../assets/crek-refs.mjs';
 
 const kinds = (refs) => refs.map(fmtRef).sort();
 
@@ -109,4 +112,54 @@ test('sameUrlPosting: on a known ATS the posting id decides', () => {
   assert.equal(sameUrlPosting('https://justjoin.it/job-offer/acme-devops?utm_source=a', 'https://justjoin.it/job-offer/acme-devops'), 'same');
   assert.equal(atsOf(ER), 'erecruiter');
   assert.equal(atsOf('https://justjoin.it/job-offer/acme-devops'), null);
+});
+
+// nofluffjobs: one posting, one page per city or region; fictional slugs and references only.
+const NFJ = 'https://nofluffjobs.com/pl/job/';
+
+test('nofluffjobs: the posting reference is read from its og:image, the REF: line and kind:value text', () => {
+  assert.deepEqual(urlRefs('https://nofluffjobs.com/pl/thumbnail-image/posting/QX7KD2PA').map(fmtRef), ['nofluffjobs:QX7KD2PA']);
+  // a reference without a digit counts for nofluffjobs only
+  assert.deepEqual(extractRefs('REF: nofluffjobs:ZKWPTRMB').map(fmtRef), ['nofluffjobs:ZKWPTRMB']);
+  assert.deepEqual(explicitRefs('nofluffjobs:ZKWPTRMB').map(fmtRef), ['nofluffjobs:ZKWPTRMB']);
+  assert.deepEqual(extractRefs('REF: ZKWPTRMB'), []);
+  // the dated duplicate note names the shared refs as kind:value
+  assert.deepEqual(kinds(extractRefs('30.10.2026: hard duplicate of #812 — shared: nofluffjobs:QX7KD2PA, greenhouse:7712345.')),
+    ['greenhouse:7712345', 'nofluffjobs:QX7KD2PA']);
+  assert.ok(POSTING_ID_KINDS.has('nofluffjobs') && POSTING_ID_KINDS.has('pracuj') && !POSTING_ID_KINDS.has('greenhouse'));
+});
+
+test('postingKey / canonicalUrl: LinkedIn, Indeed and nofluffjobs reduce to the posting address', () => {
+  assert.deepEqual(postingKey('https://pl.linkedin.com/jobs/view/devops-at-acme-4100000001?trk=x'),
+    { portal: 'linkedin', id: '4100000001', canonical: 'linkedin.com/jobs/view/4100000001' });
+  assert.equal(postingKey('https://pl.indeed.com/viewjob?jk=ABC123').canonical, 'pl.indeed.com/viewjob?jk=abc123');
+  const nfj = canonicalUrl(`${NFJ}devops-engineer-contoso-warszawa?utm_source=x&searchParameters=devops`);
+  assert.equal(nfj, 'nofluffjobs.com/job/devops-engineer-contoso-warszawa');
+  assert.equal(canonicalUrl('https://nofluffjobs.com/job/devops-engineer-contoso-warszawa/'), nfj);
+  assert.equal(canonicalUrl('https://nofluffjobs.com/en/job/devops-engineer-contoso-warszawa'), nfj);
+  assert.equal(postingKey('https://nofluffjobs.com/pl/devops'), null); // a listing, not a posting
+  assert.equal(postingKey('https://justjoin.it/job-offer/acme-devops'), null);
+});
+
+test('nfjPlaceVariant: the same title and company on another city page', () => {
+  assert.deepEqual(nfjPlaceVariant(`${NFJ}devops-engineer-contoso-warszawa`, `${NFJ}devops-engineer-contoso-remote`, ['contoso']),
+    { a: 'warszawa', b: 'remote' });
+  // counters and region slugs; the company anchors the cut (two-word companies too)
+  assert.deepEqual(nfjPlaceVariant(`${NFJ}cloud-engineer-tailspin-group-gdansk-9`, `${NFJ}cloud-engineer-tailspin-group-lower-silesian-2`,
+    ['tailspin-group', 'tailspin']), { a: 'gdansk', b: 'lower-silesian' });
+  // no company given: a known place name is cut off
+  assert.deepEqual(nfjPlaceVariant(`${NFJ}sre-fabrikam-krakow`, `${NFJ}sre-fabrikam-remote-1`), { a: 'krakow', b: 'remote' });
+  // a slug without a place at all
+  assert.deepEqual(nfjPlaceVariant(`${NFJ}platform-engineer-adatum`, `${NFJ}platform-engineer-adatum-warsaw`, ['adatum']), { a: '-', b: 'warsaw' });
+});
+
+test('nfjPlaceVariant: other titles, other companies, the same place or the same page are not variants', () => {
+  assert.equal(nfjPlaceVariant(`${NFJ}devops-engineer-contoso-remote`, `${NFJ}senior-devops-engineer-contoso-remote`, ['contoso']), null);
+  assert.equal(nfjPlaceVariant(`${NFJ}devops-engineer-contoso-remote`, `${NFJ}devops-engineer-fabrikam-remote`, ['contoso', 'fabrikam']), null);
+  // same place, another counter: another posting under the same title, not a city page
+  assert.equal(nfjPlaceVariant(`${NFJ}devops-engineer-contoso-remote-3`, `${NFJ}devops-engineer-contoso-remote-4`, ['contoso']), null);
+  assert.equal(nfjPlaceVariant(`${NFJ}devops-engineer-contoso-remote`, `${NFJ}devops-engineer-contoso-remote?utm_source=x`, ['contoso']), null);
+  assert.equal(nfjPlaceVariant(`${NFJ}devops-engineer-contoso-remote`, 'https://justjoin.it/job-offer/contoso-devops-engineer'), null);
+  // unknown place and no company to anchor the cut: no claim
+  assert.equal(nfjPlaceVariant(`${NFJ}devops-engineer-contoso-xyzzy`, `${NFJ}devops-engineer-contoso-remote`), null);
 });

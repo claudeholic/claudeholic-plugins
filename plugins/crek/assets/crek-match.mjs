@@ -18,7 +18,9 @@
  * Two kinds of hit are marked: `!!` — same canonical URL, posting reference number or ATS
  * application-form id (a duplicate); `!` — likely the same posting (same agency, same normalised title, overlapping
  * rate), or a shared URL that does not prove it (the same URL under two different companies, or
- * the same ATS form address without a shared posting id). Everything else is unmarked material. Hits on an entry with status `skipped` (set aside
+ * the same ATS form address without a shared posting id), or a nofluffjobs city page of what looks like the
+ * same posting (same title-and-company slug, another city or region — NFJ gives every place of a
+ * posting its own URL; the posting reference, kind "nofluffjobs", proves it). Everything else is unmarked material. Hits on an entry with status `skipped` (set aside
  * without review — no decision by the candidate) get `~~` / `~` instead, so a match against it is
  * never read as "duplicate" or "already declined": such a posting is presented as new. Hits on
  * an entry with status `closed` (the employer stopped taking applications) lead their reason with
@@ -48,6 +50,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   extractRefs, explicitRefs, urlRefs, sameRef, isWeakRef, fmtRef, normRef, sameUrlPosting, atsOf,
+  nfjPlaceVariant, POSTING_ID_KINDS,
 } from './crek-refs.mjs';
 import { resolveDb, openDb, DbError } from './crek-db.mjs';
 import { resolveLang, translator } from './crek-i18n.mjs';
@@ -77,8 +80,9 @@ Candidates: a JSON array of objects. Only "title" is required.
    "url": "...", "apply_url": "...", "ref": "JOB-7K2QX", "location": "...",
    "salary": {"min": 24000, "max": 32000, "unit": "month"}}
   Optional: "id" (the candidate's own pipeline row — never matched against itself),
-  "refs": ["JOB-7K2QX", "traffit:48213"], "apply_urls": ["..."], "text": "posting body"
-  (reference numbers are extracted from it).`);
+  "refs": ["JOB-7K2QX", "traffit:48213", "nofluffjobs:QX7KD2PA"], "apply_urls": ["..."],
+  "urls": ["..."] (other addresses of the same posting — on nofluffjobs the pages of its
+  other cities), "text": "posting body" (reference numbers are extracted from it).`);
   process.exit(2);
 }
 
@@ -187,6 +191,26 @@ function otherCompany(candidate, job) {
   return a.length > 0 && b.length > 0 && !sameCompany(candidate, job);
 }
 
+/** Company and agency names of both sides in nofluffjobs slug form, longest first: every leading
+ *  part of the name, so "Tailspin Group Sp. z o.o." gives "tailspin-group-sp-z-o-o", …, "tailspin-group", "tailspin"
+ *  (NFJ keeps some legal words in the slug and drops others). */
+function companySlugs(candidate, job) {
+  const out = new Set();
+  for (const name of [candidate.agency, candidate.company, job.agency, job.hiring_company]) {
+    if (!companyName(name)) continue; // placeholders ("klient nieujawniony") name nobody
+    const tokens = words(fold(name).replace(/\([^)]*\)/g, ' ')).split(' ').filter(Boolean);
+    for (let k = tokens.length; k >= 1; k--) {
+      if (tokens.slice(0, k).some((w) => !LEGAL.has(w))) out.add(tokens.slice(0, k).join('-'));
+    }
+  }
+  return [...out].sort((a, b) => b.length - a.length);
+}
+
+/** Addresses of the candidate's posting: its URL, every alternative address, the apply target. */
+function candidateUrls(candidate) {
+  return [candidate.url, ...(Array.isArray(candidate.urls) ? candidate.urls : []), candidate.apply_url].filter(Boolean);
+}
+
 function companyLabel(...names) {
   return names.map((n) => String(n ?? '').trim()).filter(Boolean).join(' / ') || '-';
 }
@@ -249,7 +273,7 @@ function candidateRefs(candidate) {
   const seen = new Set();
   explicitRefs(candidate.ref, out, seen);
   explicitRefs(candidate.refs, out, seen);
-  for (const u of [candidate.url, candidate.apply_url, ...(candidate.apply_urls ?? [])]) urlRefs(u, out, seen);
+  for (const u of [...candidateUrls(candidate), ...(candidate.apply_urls ?? [])]) urlRefs(u, out, seen);
   extractRefs(candidate.text, out, seen);
   return out;
 }
@@ -285,7 +309,7 @@ function compare(candidate, job, idfTitle, idfTech) {
   // companies is a suspicion, never proof.
   let urlSuspect = false;
   let urlReason = null;
-  const candUrls = [candidate.url, candidate.apply_url].filter(Boolean);
+  const candUrls = candidateUrls(candidate);
   const jobUrls = [job.source_url, job.apply_url].filter(Boolean);
   const urlHits = candUrls.flatMap((a) => jobUrls.map((b) => ({ a, b, how: sameUrlPosting(a, b) })))
     .filter((x) => x.how);
@@ -310,7 +334,7 @@ function compare(candidate, job, idfTitle, idfTech) {
     || (c.kind === 'ref' && !isWeakRef(c) && jobTokens(job).has(c.value)));
   const company = sharedRefs.length ? sameCompany(candidate, job) : false;
   for (const ref of sharedRefs) {
-    const key = ref.kind === 'ref' ? 'match.ref' : 'match.same_form';
+    const key = ref.kind === 'ref' ? 'match.ref' : POSTING_ID_KINDS.has(ref.kind) ? 'match.posting_id' : 'match.same_form';
     if (!isWeakRef(ref) || company) {
       if (!exact) score += 100;
       exact = true;
@@ -350,6 +374,16 @@ function compare(candidate, job, idfTitle, idfTech) {
     reasons.unshift(t(likely === 'overlap' ? 'match.likely_same_posting' : 'match.likely_same_posting_no_rate'));
   }
 
+  // nofluffjobs: another city page of what looks like the same posting (no reference to prove it).
+  let otherPlace = null;
+  if (!exact) {
+    const slugs = companySlugs(candidate, job);
+    for (const a of candUrls) {
+      for (const b of jobUrls) otherPlace ??= nfjPlaceVariant(a, b, slugs);
+    }
+    if (otherPlace) { score += 3; reasons.unshift(t('match.nfj_other_place', otherPlace)); }
+  }
+
   // A skipped entry was set aside without review: whatever matched, it carries no decision.
   const skipped = String(job.status ?? '').trim().toLowerCase() === 'skipped';
   if (skipped) reasons.unshift(t('match.previously_skipped'));
@@ -359,7 +393,7 @@ function compare(candidate, job, idfTitle, idfTech) {
   // A duplicate row points at the entry that holds the decision.
   if (job.duplicate_of_id) reasons.push(t('match.duplicate_of', { id: job.duplicate_of_id }));
 
-  return { score, exact, likely, urlSuspect: exact ? false : urlSuspect,
+  return { score, exact, likely, otherPlace, urlSuspect: exact ? false : urlSuspect,
     urlReason: exact ? null : urlReason, skipped, closed, sharedTitle, sharedTech, sharedRefs, reasons };
 }
 
@@ -380,11 +414,11 @@ function fmtLine(job, cmp) {
   return `#${job.id} | ${job.title ?? '-'} | ${who} | ${job.status ?? '-'} | ${fmtDate(job)} | ${why}`;
 }
 
-/** `!!` duplicate, `!` likely the same posting or a suspicious shared URL; `~~` / `~` the same
- *  against a skipped entry. */
+/** `!!` duplicate, `!` likely the same posting (or another NFJ city page of it) or a suspicious
+ *  shared URL; `~~` / `~` the same against a skipped entry. */
 function marker(cmp) {
   if (cmp.exact) return cmp.skipped ? '~~ ' : '!! ';
-  if (cmp.likely || cmp.urlSuspect) return cmp.skipped ? '~  ' : '!  ';
+  if (cmp.likely || cmp.otherPlace || cmp.urlSuspect) return cmp.skipped ? '~  ' : '!  ';
   return '   ';
 }
 
@@ -408,8 +442,8 @@ export function matchCandidates(candidates, jobs, { top = DEFAULT_TOP } = {}) {
     const scored = jobs
       .filter((job) => candidate.id == null || String(job.id) !== String(candidate.id))
       .map((job) => ({ job, cmp: compare(candidate, job, idfTitle, idfTech) }))
-      .filter(({ cmp }) => cmp.score > 0.5 || cmp.likely || cmp.urlSuspect);
-    const tier = ({ cmp }) => (cmp.exact ? 2 : cmp.likely || cmp.urlSuspect ? 1 : 0);
+      .filter(({ cmp }) => cmp.score > 0.5 || cmp.likely || cmp.otherPlace || cmp.urlSuspect);
+    const tier = ({ cmp }) => (cmp.exact ? 2 : cmp.likely || cmp.otherPlace || cmp.urlSuspect ? 1 : 0);
     scored.sort((a, b) => tier(b) - tier(a) || b.cmp.score - a.cmp.score);
     const hits = scored.filter((x) => tier(x) > 0).length;
     return { candidate, scored: scored.slice(0, Math.max(top, hits)) };
@@ -429,6 +463,7 @@ export function resultsJson({ results, rootOf }) {
       duplicate_of_id: job.duplicate_of_id ?? null, root_id: rootOf(job).id, root_status: rootOf(job).status,
       shared_refs: cmp.sharedRefs.map(fmtRef), score: Number(cmp.score.toFixed(2)),
       exact: cmp.exact, likely_same_posting: Boolean(cmp.likely), url_suspect: cmp.urlSuspect, url_reason: cmp.urlReason,
+      other_place: cmp.otherPlace ? `${cmp.otherPlace.a} / ${cmp.otherPlace.b}` : null,
       previously_skipped: cmp.skipped,
       previously_closed: cmp.closed,
       likely_same_posting_rate: cmp.likely ?? null, shared: [...cmp.sharedTitle, ...cmp.sharedTech], reasons: cmp.reasons,
@@ -500,7 +535,7 @@ async function main(args) {
     }
   }
   const hits = results.flatMap(({ scored }) => scored.map(({ cmp }) => cmp))
-    .filter((cmp) => cmp.exact || cmp.likely || cmp.urlSuspect);
+    .filter((cmp) => cmp.exact || cmp.likely || cmp.otherPlace || cmp.urlSuspect);
   if (hits.some((cmp) => !cmp.skipped)) console.log(`\n${t('match.legend')}`);
   if (hits.some((cmp) => cmp.skipped)) console.log(`\n${t('match.legend_skipped')}`);
   console.log(`\n${t('match.closing')}`);

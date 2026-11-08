@@ -28,6 +28,7 @@ import { createHash } from 'node:crypto';
 import { resolve, dirname, join, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { browserProblems } from './crek-browsers.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -205,7 +206,14 @@ if (!cv.dir) warnings.push('missing cv.dir — no home for per-application CV di
 // plain array that was the whole list — still works, but it freezes the list: boards added to the
 // plugin later never reach that user. Hence the migration warning.
 const BOARD_REGIONS = ['pl', 'global', 'freelance', 'ats-search'];
-const BOARD_FIELDS = ['name', 'url', 'region', 'notes'];
+const BOARD_FIELDS = ['name', 'url', 'region', 'notes', 'listing'];
+// How far a scan goes on a board (boards.json `listing.stop_rule`, job-scan *How far to go on each board*).
+const STOP_RULES = ['time_filter', 'date_order', 'date_order_unverified', 'low_quality'];
+function checkListing(at, listing) {
+  if (listing === undefined) return;
+  if (!obj(listing)) { errors.push(`${at}.listing must be an object`); return; }
+  if (!STOP_RULES.includes(listing.stop_rule)) errors.push(`${at}.listing.stop_rule is ${JSON.stringify(listing.stop_rule)} — expected ${STOP_RULES.join(', ')}`);
+}
 let defaults = [];
 let defaultsError = null;
 try {
@@ -276,6 +284,7 @@ if (cfg.boards === undefined) {
     if (defaultKeys.has(x?.key)) warnings.push(`boards.extra[${i}] reuses the plugin key "${x.key}" — the board is then listed twice; use boards.override.${x.key} instead`);
     else if (extraKeys.has(x?.key)) errors.push(`boards.extra has key "${x.key}" twice`);
     if (x?.key) extraKeys.add(x.key);
+    checkListing(`boards.extra[${i}]`, x?.listing);
   }
   if (b.disabled !== undefined && !Array.isArray(b.disabled)) errors.push('boards.disabled must be an array of keys');
   for (const k of Array.isArray(b.disabled) ? b.disabled : []) {
@@ -290,6 +299,7 @@ if (cfg.boards === undefined) {
       if (!BOARD_FIELDS.includes(f)) errors.push(`boards.override.${k}.${f} is not a board field — expected ${BOARD_FIELDS.join(', ')}`);
     }
     if (o?.region && !BOARD_REGIONS.includes(o.region)) errors.push(`boards.override.${k}.region "${o.region}" — expected ${BOARD_REGIONS.join(', ')}`);
+    checkListing(`boards.override.${k}`, o?.listing);
   }
 }
 if (!Array.isArray(cfg.boards) && cfg.boards !== undefined) {
@@ -369,6 +379,13 @@ if (!language) {
       notes.push(`presentation.language "${language}" has no dictionary in i18n.json (${Object.keys(i18n).join(', ')}) — fixed labels fall back to English`);
     }
   }
+}
+// Browsers in the order of use and mail access (added in 1.12): optional, checked in crek-browsers.mjs.
+{
+  const p = browserProblems(cfg);
+  errors.push(...p.errors);
+  warnings.push(...p.warnings);
+  notes.push(...p.notes);
 }
 if (!cfg.rate_policy) {
   notes.push('no rate_policy — forms asking for expected pay will need a decision every time');

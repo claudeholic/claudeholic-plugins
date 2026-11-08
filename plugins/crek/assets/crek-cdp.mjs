@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 /**
  * crek-cdp — the minimal Chrome DevTools Protocol client shared by crek-closed-check,
- * crek-dedupe-check and html-to-pdf. Talks to the browser chrome-shared keeps running
- * (debugging port 9226 since chrome-shared 1.3.2; 9227 is its proxy, 9222 the classic default).
+ * crek-dedupe-check, crek-browsers and html-to-pdf. Talks to the browser chrome-shared keeps running
+ * (debugging port 9226 since chrome-shared 1.3.2; 9227 is its proxy, 9222 the classic default),
+ * or to any other Chromium-based browser started with --remote-debugging-port (crek-browsers).
  *
  * Every command has a timeout, so a tab that hangs (a modal dialog, a dead renderer) fails one
  * posting instead of freezing the whole run. Navigation accepts http(s) URLs only: the URLs come
@@ -25,6 +26,32 @@ export async function findPort(port) {
     } catch { /* try the next one */ }
   }
   return null;
+}
+
+/** What /json/version says about the browser on a port ({Browser, Protocol-Version,
+ *  webSocketDebuggerUrl, …}); throws when nothing answers. */
+export async function browserVersion(port, { host = '127.0.0.1', timeoutMs = 1500 } = {}) {
+  const r = await fetch(`http://${host}:${port}/json/version`, { signal: AbortSignal.timeout(timeoutMs) });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
+/**
+ * Open one about:blank tab in the background and close it again, over the browser's own endpoint
+ * (Target.createTarget with background: true — the tab does not come to the front, and no other
+ * tab is touched). Proves that the browser can be driven, not only that its port answers.
+ */
+export async function testBackgroundTab(port, { timeoutMs = 10000 } = {}) {
+  const { webSocketDebuggerUrl } = await browserVersion(port);
+  if (!webSocketDebuggerUrl) throw new Error('no browser endpoint in /json/version');
+  const b = await connect(webSocketDebuggerUrl, { timeoutMs });
+  try {
+    const { targetId } = await b.send('Target.createTarget', { url: 'about:blank', background: true });
+    try { await sleep(300); } finally { await b.send('Target.closeTarget', { targetId }); }
+    return { targetId };
+  } finally {
+    b.close();
+  }
 }
 
 /** Throws unless the URL is http(s): javascript:, file:, data: and the like are never navigated to. */

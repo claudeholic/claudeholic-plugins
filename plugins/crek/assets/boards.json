@@ -1,5 +1,5 @@
 {
-  "description": "Default job boards scanned by crek:job-scan, in the order they are worth checking. The config only adjusts this list: boards.extra adds boards, boards.disabled skips keys, boards.override patches fields of a key (typically url with the candidate's own filters). A board added here later is scanned by default unless disabled. Keys are stable - never rename one, configs refer to it.",
+  "description": "Default job boards scanned by crek:job-scan, in the order they are worth checking. The config only adjusts this list: boards.extra adds boards, boards.disabled skips keys, boards.override patches fields of a key (typically url with the candidate's own filters). A board added here later is scanned by default unless disabled. Keys are stable - never rename one, configs refer to it. Each board's 'listing' says how its results are ordered and filtered, and with it how far a scan goes there (stop_rule, see job-scan, How far to go on each board); boards without one have not been researched yet.",
   "excluded": [
     {
       "name": "Toptal",
@@ -18,49 +18,187 @@
       "name": "justjoin.it",
       "url": "https://justjoin.it/job-offers/all-locations",
       "region": "pl",
-      "notes": "Largest PL IT board, B2B rates shown; keyword search covers tags. Closed: HTTP 404 'Sorry, we cannot display this page' (expired offers are removed); possibly 'Oferta archiwalna' first, as on rocketjobs. Refs: the 'Apply' button leads to the employer's ATS (Traffit /public/form/a/<hash>, eRecruiter WebID=, Recruitify /job/<uuid>, Greenhouse) - take the form id from that link; the body rarely has a reference number."
+      "notes": "Largest PL IT board, B2B rates shown; keyword search covers tags. Closed: HTTP 404 'Sorry, we cannot display this page' (expired offers are removed); possibly 'Oferta archiwalna' first, as on rocketjobs. Refs: the 'Apply' button leads to the employer's ATS (Traffit /public/form/a/<hash>, eRecruiter WebID=, Recruitify /job/<uuid>, Greenhouse) - take the form id from that link; the body rarely has a reference number.",
+      "listing": {
+        "stop_rule": "time_filter",
+        "sort": [
+          "default",
+          "date",
+          "salary",
+          "match"
+        ],
+        "default_sort": "default",
+        "date_sort": "sortBy=newest",
+        "time_filter": [
+          "1d",
+          "7d",
+          "14d",
+          "30d"
+        ],
+        "time_filter_param": "published-date=<days> (1, 7, 14, 30)",
+        "strict_date_order": null,
+        "pagination": "infinite scroll, no numbered pages",
+        "limit": null,
+        "verified": "checked on the site 2026-11-08 (sortBy=newest and published-date=7 confirmed; 1/14/30 read from the filter labels)",
+        "notes": "'Best match' (sortBy=match) only with a search phrase. sortBy and published-date combine. No promoted labels seen; date order not checked."
+      }
     },
     {
       "key": "nofluffjobs",
       "name": "nofluffjobs.com",
       "url": "https://nofluffjobs.com/pl/",
       "region": "pl",
-      "notes": "Rates always shown; many agency (body leasing) postings. Closed: the same URL shows 'Oferta pracy <title> wygasła.' (HTTP 200). Refs: agencies put 'Ref.' / 'Nr ref.' at the end of the body; 'Aplikuj' often goes to Traffit / Lever (lever-source=nofluff) - take the form id from that link."
+      "notes": "Rates always shown; many agency (body leasing) postings. Closed: the same URL shows 'Oferta pracy <title> wygasła.' (HTTP 200). Refs: agencies put 'Ref.' / 'Nr ref.' at the end of the body; 'Aplikuj' often goes to Traffit / Lever (lever-source=nofluff) - take the form id from that link. One posting has a URL per city / region (...-warszawa, ...-remote, ...-lower-silesian-2): its NFJ posting reference (8 characters, may be letters only) is the same on all - read it from the og:image meta (.../thumbnail-image/posting/<reference>), record it as nofluffjobs:<reference> and pass the other city pages (location.places[].url in the posting data) to crek-match as urls.",
+      "listing": {
+        "stop_rule": "date_order_unverified",
+        "sort": [
+          "relevance",
+          "date",
+          "salary"
+        ],
+        "default_sort": "relevance",
+        "date_sort": "sort=newest",
+        "time_filter": [],
+        "time_filter_param": null,
+        "strict_date_order": null,
+        "pagination": "'Pokaż kolejne oferty' button (load more), no numbered pages",
+        "limit": null,
+        "verified": "checked on the site 2026-11-08 (sort=newest / salary-desc / salary-asc confirmed; no publication-date filter in the job search)",
+        "notes": "The 'Data aplikacji' filter belongs to the candidate's own applications, not to the job search. Whether sort=newest is strictly by date was not established."
+      }
     },
     {
       "key": "solid_jobs",
       "name": "solid.jobs",
       "url": "https://solid.jobs/offers/it",
       "region": "pl",
-      "notes": "Traffit forms use Selectize - set values via el.selectize.setValue. Closed: redirect to /offer-not-found/..., 'Przepraszamy, rekrutacja już się zakończyła', badge 'Zakończone'. Refs: offers are Traffit postings - 'ID: <n>' near the title and the Traffit form id behind 'Aplikuj'."
+      "notes": "Traffit forms use Selectize - set values via el.selectize.setValue. Closed: redirect to /offer-not-found/..., 'Przepraszamy, rekrutacja już się zakończyła', badge 'Zakończone'. Refs: offers are Traffit postings - 'ID: <n>' near the title and the Traffit form id behind 'Aplikuj'.",
+      "listing": {
+        "stop_rule": "date_order_unverified",
+        "sort": [
+          "date (API validFrom)",
+          "validTo",
+          "title",
+          "company",
+          "salary",
+          "experience"
+        ],
+        "default_sort": "date (API)",
+        "date_sort": "public API: sortActive=validFrom&sortDirection=desc (also the API default); the site: not established",
+        "time_filter": [],
+        "time_filter_param": null,
+        "strict_date_order": null,
+        "pagination": "API: pageIndex / pageSize (max 500); the site: not established",
+        "limit": null,
+        "verified": "partly: the public API checked 2026-11-08 (3-posting sample strictly by validFrom); the site's sort control not found",
+        "notes": "Public API: GET https://solid.jobs/public-api/offers/{division}?campaign=<id>&pageIndex=&pageSize=&sortActive=&sortDirection= (documented in github.com/solid-company/solid-jobs-client). No \"last N days\" parameter."
+      }
     },
     {
       "key": "theprotocol",
       "name": "theprotocol.it",
       "url": "https://theprotocol.it/",
       "region": "pl",
-      "notes": "Closed: redirect /szczegoly/praca/... -> /praca/..., 'Oferta wygasła' (HTTP 200). Refs: the body seldom has one; the external 'Aplikuj' link (eRecruiter, Traffit, company ATS) carries the form id."
+      "notes": "Closed: redirect /szczegoly/praca/... -> /praca/..., 'Oferta wygasła' (HTTP 200). Refs: the body seldom has one; the external 'Aplikuj' link (eRecruiter, Traffit, company ATS) carries the form id.",
+      "listing": {
+        "stop_rule": "date_order_unverified",
+        "sort": [
+          "relevance",
+          "salary",
+          "date"
+        ],
+        "default_sort": "relevance",
+        "date_sort": "sort=date",
+        "time_filter": [],
+        "time_filter_param": null,
+        "strict_date_order": null,
+        "pagination": "pageNumber=N (82 pages seen for one keyword)",
+        "limit": null,
+        "verified": "checked on the site 2026-11-08 (sort=date / sort=salary and pageNumber confirmed; no publication-date filter)",
+        "notes": "No sponsored labels seen in a short look; date order not checked programmatically."
+      }
     },
     {
       "key": "bulldogjob",
       "name": "bulldogjob.pl",
       "url": "https://bulldogjob.pl/companies/jobs",
       "region": "pl",
-      "notes": "Closed: 'Job expired DD.MM.YYYY' next to the posting (EN UI; the PL wording is not verified). Refs: external 'Apply' link carries the ATS id; look for 'Ref.' in the body."
+      "notes": "Closed: 'Job expired DD.MM.YYYY' next to the posting (EN UI; the PL wording is not verified). Refs: external 'Apply' link carries the ATS id; look for 'Ref.' in the body.",
+      "listing": {
+        "stop_rule": "date_order_unverified",
+        "sort": [
+          "default",
+          "salary",
+          "date",
+          "title",
+          "company"
+        ],
+        "default_sort": "default",
+        "date_sort": "path segment /s/order,published,desc",
+        "time_filter": [],
+        "time_filter_param": null,
+        "strict_date_order": null,
+        "pagination": "numbered buttons without links (client-side paging; a page cannot be opened by URL)",
+        "limit": null,
+        "verified": "checked on the site 2026-11-08 (order,published,desc confirmed; no publication-date filter)",
+        "notes": "Sort options: Domyślnie, Widełki od najwyższych / najniższych, Od najstarszej, Od najnowszej, Tytuł, Firma. Date order not checked programmatically."
+      }
     },
     {
       "key": "rocketjobs",
       "name": "rocketjobs.pl",
       "url": "https://rocketjobs.pl/",
       "region": "pl",
-      "notes": "Sister of justjoin, broader than IT. Closed: 'Oferta archiwalna' on the same URL; later HTTP 404 like justjoin. Refs: as justjoin - the ATS form id behind 'Apply'."
+      "notes": "Sister of justjoin, broader than IT. Closed: 'Oferta archiwalna' on the same URL; later HTTP 404 like justjoin. Refs: as justjoin - the ATS form id behind 'Apply'.",
+      "listing": {
+        "stop_rule": "time_filter",
+        "sort": [
+          "default",
+          "date",
+          "salary",
+          "match"
+        ],
+        "default_sort": "default",
+        "date_sort": "sortBy=newest",
+        "time_filter": [
+          "1d",
+          "7d",
+          "14d",
+          "30d"
+        ],
+        "time_filter_param": "published-date=<days> (inferred from justjoin.it, not confirmed on this domain)",
+        "strict_date_order": null,
+        "pagination": "probably infinite scroll as on justjoin.it (not tested)",
+        "limit": null,
+        "verified": "partly: sortBy=newest confirmed on the site 2026-11-08; the time filter seen in the UI, its URL parameter not verified",
+        "notes": "Same engine and owner as justjoin.it. If the URL parameter does not apply, set the filter in the GUI."
+      }
     },
     {
       "key": "pracuj_pl",
       "name": "pracuj.pl",
       "url": "https://it.pracuj.pl/praca",
       "region": "pl",
-      "notes": "Mostly corporate UoP; B2B filter unreliable - verify in body. Closed: 'Pracodawca zakończył zbieranie zgłoszeń na tę ofertę' / EN 'offer expired N months ago'. Refs: the posting id is in the URL (,oferta,<id>; one per location, all the same posting); employer ATS links (Sii 'Nr oferty JOB-XXXXX', sii.pl/oferty-pracy/id/<n>, eRecruiter) and 'Numer referencyjny' in the body."
+      "notes": "Mostly corporate UoP; B2B filter unreliable - verify in body. Closed: 'Pracodawca zakończył zbieranie zgłoszeń na tę ofertę' / EN 'offer expired N months ago'. Refs: the posting id is in the URL (,oferta,<id>; one per location, all the same posting); employer ATS links (Sii 'Nr oferty JOB-XXXXX', sii.pl/oferty-pracy/id/<n>, eRecruiter) and 'Numer referencyjny' in the body.",
+      "listing": {
+        "stop_rule": "time_filter",
+        "sort": [],
+        "default_sort": "recommended ('Oferty rekomendowane', paid 'Superoferta' on top)",
+        "date_sort": null,
+        "time_filter": [
+          "1d",
+          "3d",
+          "7d",
+          "14d",
+          "30d"
+        ],
+        "time_filter_param": "not established - set 'Czas publikacji ogłoszenia' in the GUI",
+        "strict_date_order": false,
+        "pagination": "numbered pages ('Następna')",
+        "limit": null,
+        "verified": "checked on the site 2026-11-08 (no sort switch; time filter 24h/3/7/14/30 days seen with counts; its URL parameter not found)",
+        "notes": "Paid 'Superoferta' postings are pushed to the top regardless of date: never stop on dates here, go through the whole filtered list."
+      }
     },
     {
       "key": "inhire",
@@ -74,42 +212,141 @@
       "name": "LinkedIn",
       "url": "https://www.linkedin.com/jobs/search/",
       "region": "global",
-      "notes": "Open in shared browser context (logged in), one posting at a time - LinkedIn restricts accounts that look automated; no scripted requests, no API (with the linkedin-mcp plugin, use its tools instead). Many 'Remote' postings are EOR/full-time. Closed: page 'No longer accepting applications' / PL 'Kandydaci nie są już akceptowani', Apply button gone. Postings close within hours - check at scan time and again right before showing a batch (assets/crek-closed-check.mjs reads the open tab's text; anything but 'closed' means read the page). Refs: the body often ends with 'Job no. JOB-XXXXX', 'Req ID', 'Job Requisition ID R-12345' (Workday); the external 'Apply' button opens the employer's form in a new tab (or a /safety/go/?url= link) - its ATS id is the strongest ref. Easy Apply has no external id."
+      "notes": "Open in shared browser context (logged in), one posting at a time - LinkedIn restricts accounts that look automated; no scripted requests, no API (with the linkedin-mcp plugin, use its tools instead). Browse like one person (ats-playbook, 'Boards you are signed in to'): one agent, one tab and one action at a time, scrolling with random pauses of a few seconds, as many result pages and postings as the task needs. Many 'Remote' postings are EOR/full-time. Closed: page 'No longer accepting applications' / PL 'Kandydaci nie są już akceptowani', Apply button gone. Postings close within hours - check at scan time and again right before showing a batch (assets/crek-closed-check.mjs reads the open tab's text; anything but 'closed' means read the page). Refs: the body often ends with 'Job no. JOB-XXXXX', 'Req ID', 'Job Requisition ID R-12345' (Workday); the external 'Apply' button opens the employer's form in a new tab (or a /safety/go/?url= link) - its ATS id is the strongest ref. Easy Apply has no external id.",
+      "listing": {
+        "stop_rule": "time_filter",
+        "sort": [
+          "relevance",
+          "date"
+        ],
+        "default_sort": "relevance (personalised)",
+        "date_sort": "sortBy=DD (sortBy=R = relevance)",
+        "time_filter": [
+          "1h",
+          "1d",
+          "7d",
+          "30d"
+        ],
+        "time_filter_param": "f_TPR=r<seconds> (r3600, r86400, r604800, r2592000)",
+        "strict_date_order": null,
+        "pagination": "start=N",
+        "limit": "about 1000 results per query",
+        "verified": "not verified on the site: from LinkedIn help (time filter: past 24 h / week / month) and third-party sources (URL parameters, the 1000 limit, sponsored postings mixed into date order)",
+        "notes": "Signed in only; the browse-like-one-person rules apply. A filtered list longer than the limit: split the query (keywords, location) rather than stopping early."
+      }
     },
     {
       "key": "indeed_pl",
       "name": "Indeed.pl",
       "url": "https://pl.indeed.com/",
       "region": "global",
-      "notes": "Refs: 'Apply on company site' link carries the ATS id; body may have 'Nr ref.'."
+      "notes": "Board that uses the user's login - in a scan the login-board agent's part; browse like one person (ats-playbook, 'Boards you are signed in to'): one agent, one tab and one action at a time, scrolling with random pauses of a few seconds, as many result pages and postings as the task needs. Refs: 'Apply on company site' link carries the ATS id; body may have 'Nr ref.'.",
+      "listing": {
+        "stop_rule": "time_filter",
+        "sort": [
+          "relevance",
+          "date"
+        ],
+        "default_sort": "relevance",
+        "date_sort": "sort=date",
+        "time_filter": [
+          "1d",
+          "3d",
+          "7d",
+          "14d"
+        ],
+        "time_filter_param": "fromage=<days> (1, 3, 7, 14; 7 confirmed)",
+        "strict_date_order": null,
+        "pagination": "start=N (10 per page)",
+        "limit": "about 1000 results (general knowledge, not verified)",
+        "verified": "checked on the site 2026-11-08 (sort=date and fromage=7 confirmed, also together)",
+        "notes": "Under relevance sort 'Reklama' (sponsored) postings appear; none seen under sort=date in a ~15-posting sample. Timestamp order not checked."
+      }
     },
     {
       "key": "wellfound",
       "name": "Wellfound",
       "url": "https://wellfound.com/jobs",
       "region": "global",
-      "notes": "Startups; check location eligibility per role. Refs: the job id is in the URL (/jobs/<id>-...); no ATS behind it."
+      "notes": "Startups; check location eligibility per role. Refs: the job id is in the URL (/jobs/<id>-...); no ATS behind it.",
+      "listing": {
+        "stop_rule": "low_quality",
+        "sort": [
+          "relevance",
+          "date"
+        ],
+        "default_sort": "relevance (third-party sources)",
+        "date_sort": null,
+        "time_filter": [],
+        "time_filter_param": null,
+        "strict_date_order": null,
+        "pagination": "?page=N (works without a login on /role/r/<role>)",
+        "limit": null,
+        "low_quality_reason": "no time filter, and sorting is not reachable by URL (only ?page=N works)",
+        "verified": "partly: /role/r/<role>?page=N checked 2026-11-08 (HTTP 200, page count shown); sorting and filters from third-party sources and the help center",
+        "notes": "A sort control (Relevance / Most Recent) exists, but it needs a login and sits behind Cloudflare Turnstile; URL parameters other than page are ignored."
+      }
     },
     {
       "key": "weworkremotely",
       "name": "WeWorkRemotely",
       "url": "https://weworkremotely.com/",
       "region": "global",
-      "notes": "Often US-only - check eligibility. Refs: the 'Apply' link usually goes to Greenhouse / Lever / Ashby - take the job id from it."
+      "notes": "Often US-only - check eligibility. Refs: the 'Apply' link usually goes to Greenhouse / Lever / Ashby - take the job id from it.",
+      "listing": {
+        "stop_rule": "low_quality",
+        "sort": [],
+        "default_sort": "newest (by design)",
+        "date_sort": null,
+        "time_filter": [],
+        "time_filter_param": null,
+        "strict_date_order": false,
+        "pagination": "RSS per category (remote-jobs.rss, categories/<category>.rss), about 80 items in the main feed (third-party)",
+        "limit": "the RSS window",
+        "low_quality_reason": "not strictly by date: older (bumped or promoted) postings appear among new ones; no time filter in the feeds",
+        "verified": "checked on the RSS 2026-11-08 (postings from September and August between October ones); the search page \"age\" filter not verified",
+        "notes": "Read every category feed relevant to the candidate in full; the search page may have an \"age\" filter (not verified)."
+      }
     },
     {
       "key": "remoteok",
       "name": "RemoteOK",
       "url": "https://remoteok.com/",
       "region": "global",
-      "notes": "Often US-only - check eligibility. Refs: the 'Apply' link usually goes to the company ATS - take the job id from it."
+      "notes": "Often US-only - check eligibility. Refs: the 'Apply' link usually goes to the company ATS - take the job id from it.",
+      "listing": {
+        "stop_rule": "date_order",
+        "sort": [],
+        "default_sort": "newest (the only order)",
+        "date_sort": "the only order",
+        "time_filter": [],
+        "time_filter_param": null,
+        "strict_date_order": true,
+        "pagination": "none - one request returns the whole list (https://remoteok.com/api)",
+        "limit": null,
+        "verified": "checked on the API 2026-11-08 (first 30 postings strictly by epoch)",
+        "notes": "Stop at the first posting older than the window."
+      }
     },
     {
       "key": "remotive",
       "name": "Remotive",
       "url": "https://remotive.com/remote-jobs",
       "region": "global",
-      "notes": "Category pages narrow the list (e.g. /remote-jobs/devops). Refs: the 'Apply' link goes to the company ATS - take the job id from it."
+      "notes": "Category pages narrow the list (e.g. /remote-jobs/devops). Refs: the 'Apply' link goes to the company ATS - take the job id from it.",
+      "listing": {
+        "stop_rule": "date_order",
+        "sort": [],
+        "default_sort": "newest (documented: \"sorted by publication date\")",
+        "date_sort": "the only order",
+        "time_filter": [],
+        "time_filter_param": null,
+        "strict_date_order": true,
+        "pagination": "limit only, no offset or page (API https://remotive.com/api/remote-jobs?category=&search=&limit=)",
+        "limit": null,
+        "verified": "documented and checked on the API 2026-11-08 (12-posting sample strictly by publication_date)",
+        "notes": "Data delayed by 24 h; about 2 requests per minute, at most 4 a day recommended."
+      }
     },
     {
       "key": "euremotejobs",
@@ -123,7 +360,26 @@
       "name": "Himalayas",
       "url": "https://himalayas.app/jobs",
       "region": "global",
-      "notes": "Trap: every page, open or not, shows a 'Job expired?' feedback link - it is not a closed marker; check the employer's apply link. Refs: the employer's apply link carries the ATS job id."
+      "notes": "Trap: every page, open or not, shows a 'Job expired?' feedback link - it is not a closed marker; check the employer's apply link. Refs: the employer's apply link carries the ATS job id.",
+      "listing": {
+        "stop_rule": "low_quality",
+        "sort": [
+          "relevant",
+          "recent",
+          "salary",
+          "name"
+        ],
+        "default_sort": "not documented",
+        "date_sort": "/jobs/api/search?sort=recent - not strictly by date",
+        "time_filter": [],
+        "time_filter_param": null,
+        "strict_date_order": false,
+        "pagination": "/jobs/api/search: page=N; /jobs/api: cursor (nextCursor), 20 per request",
+        "limit": null,
+        "low_quality_reason": "sort=recent is not strictly by date (postings out of order without a flag), no time filter",
+        "verified": "checked on the API 2026-11-08 (sort=recent out of order; the full feed /jobs/api strictly by pubDate in a 5-posting sample)",
+        "notes": "The full feed /jobs/api looked date-ordered in a small sample; not enough to stop on dates."
+      }
     },
     {
       "key": "workingnomads",

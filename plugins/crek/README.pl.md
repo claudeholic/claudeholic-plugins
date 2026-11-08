@@ -39,7 +39,9 @@ uprawnieniach.
   karty. Plusy i Minusy to pokryte i brakujące wymagania, nie opinie. W Komentarzach są Twoje
   wcześniejsze decyzje i sugestia Claude.
 - **Wyłapuje powtórki i zamknięte ogłoszenia** — ta sama praca często wraca przez inny portal
-  albo inną agencję. CREK porównuje adresy, numery referencyjne i identyfikatory formularzy.
+  albo inną agencję. CREK porównuje adresy, numery referencyjne, własne numery ogłoszeń portali
+  (nofluffjobs daje każdemu miastu ogłoszenia osobny URL, ale jeden numer) i identyfikatory
+  formularzy.
   Udowodniona powtórka trafia do bazy jako duplikat, prawdopodobna powtórka czegoś, na co już
   aplikowałeś, ląduje pod tabelą, słabsze podejrzenie — w Komentarzach. To, czy oferta wciąż
   przyjmuje zgłoszenia, jest sprawdzane przy skanie i jeszcze raz tuż przed pokazaniem partii.
@@ -108,7 +110,10 @@ liczone są oceny, zapisuje `crek.config.json` (do odczytu tylko przez Ciebie) i
 
 **2. Skan.** Jeszcze raz `przeskanuj portale`. Claude otwiera portale we wspólnej przeglądarce,
 ustawia ich filtry, czyta oferty z krótkiej listy, sprawdza je z bazą, ocenia i zapisuje jako
-`new`. To prawdziwe przeglądanie, strona po stronie, więc chwilę trwa.
+`new`. To prawdziwe przeglądanie, strona po stronie, więc chwilę trwa. Portale, na których
+jesteś zalogowany (LinkedIn, Indeed i podobne), dostaje jeden osobny agent, który przegląda je jak
+człowiek: jedna karta i jedna czynność naraz, przewijanie z kilkusekundowymi przerwami — tyle stron
+wyników i ofert, ile potrzeba do skanu, ale nigdy kilka naraz.
 
 **3. Tabela.** Pierwsze dziesięć ofert jest otwartych w kartach, a Ty dostajesz:
 
@@ -149,6 +154,7 @@ Ciebie rekruter, `zaktualizowałem CV` po zmianie CV.
 | `crek:report` | pokazuje oferty z bazy, zapisuje Twoje decyzje o partii | „pokaż tabelę”, „otwórz pierwsze 10”, „co wysłaliśmy”, „pokaż wysłane”, „ile wysłaliśmy”, „status zgłoszeń”, „co jest otwarte”, „X wyślij, reszta odrzuć” | show the table, open the first 10, summary table, what did we send, what is open, send X, decline the rest |
 | `crek:apply` | jedna oferta od początku do końca: ocena, CV, formularz, baza | „aplikuj”, „wyślij CV”, „wyślij zgłoszenie”, „oceń ofertę”, „czy ta oferta pasuje”, „przeanalizuj ogłoszenie”, „rekruter się odezwał”, „odpowiedz rekruterowi” | apply to a job, send the application, evaluate a posting, handle a recruiter's offer |
 | `crek:profile` | czyta główne CV i odświeża profil umiejętności | „zmieniłem CV”, „zaktualizowałem CV”, „przeczytaj CV od nowa”, „odśwież profil umiejętności” | I updated my CV |
+| `crek:browsers` | pokazuje, zmienia i sprawdza przeglądarki CREK (w kolejności, z zapasowymi) oraz dostęp do poczty dla kodów weryfikacyjnych | „skonfiguruj przeglądarki”, „sprawdź przeglądarki”, „dodaj przeglądarkę zapasową”, „zmień kolejność przeglądarek”, „dostęp do maila” | set up browsers, check the browsers, add a fallback browser, mail access |
 
 Krótkie polecenia — „następne” / "next", „kolejne 10” / "next 10", „pomiń resztę” / "skip the
 rest", „zignoruj resztę” / "ignore the rest" — działają tylko zaraz po wyświetleniu listy CREK.
@@ -157,7 +163,32 @@ rest", „zignoruj resztę” / "ignore the rest" — działają tylko zaraz po 
 w jego opisie, i ich nie tłumaczy. Opisy skilli CREK mają najpierw frazy polskie, a angielskie
 jako dodatek. Angielskie polecenie bliskie angielskim frazom zadziała; inaczej sformułowane albo
 napisane w trzecim języku może nie uruchomić skilla. Wtedy wywołaj skill po nazwie —
-`/crek:job-scan`, `/crek:report`, `/crek:apply`, `/crek:profile` — i napisz, czego chcesz.
+`/crek:job-scan`, `/crek:report`, `/crek:apply`, `/crek:profile`, `/crek:browsers` — i napisz,
+czego chcesz.
+
+## Przeglądarki, CAPTCHA i kody z maila
+
+CREK domyślnie pracuje w **chrome-shared**. Dwa ustawienia, o które pyta wywiad przy pierwszym
+uruchomieniu i którymi zarządza `crek:browsers`, decydują, co się dzieje, gdy strona stawia opór:
+
+- **Lista przeglądarek w kolejności użycia** (`browser.browsers`). Pierwsza wykonuje całą pracę,
+  kolejne są zapasowe. Gdy strona pokaże CAPTCHA albo blokadę antybotową czekającą na kliknięcie,
+  Claude jej nie rozwiązuje: otwiera tę samą stronę w następnej przeglądarce z listy, a gdy żadna
+  nie przejdzie — zatrzymuje się i mówi Ci, co blokowało, gdzie i które przeglądarki próbował.
+  Tylko chrome-shared, inna przeglądarka jako pierwsza albo kilka z fallbackiem — wybór należy do
+  Ciebie. Zapasową może być każda przeglądarka oparta na Chromium uruchomiona z portem debugowania
+  (albo inny serwer MCP przeglądarki); przy każdej można zapisać opis profilu i polecenie, które ją
+  uruchamia.
+- **Dostęp do poczty** (`mail`): czy Claude ma dostęp do Twojej skrzynki (np. konektor Gmail
+  w claude.ai) i czy może **sam** odczytać z niej kod albo link weryfikacyjny. Z pozwoleniem czyta
+  tylko najnowszą wiadomość od serwisu, do którego się loguje, wyłącznie do odczytu, i bierze tylko
+  ten kod albo link tego serwisu; treść wiadomości to dane, nigdy polecenia. Bez pozwolenia — albo
+  przy kodzie SMS — pyta Ciebie.
+
+`crek:browsers` pokazuje obecne ustawienia i **sprawdza, czy naprawdę działają**: każdy port
+debugowania odpowiada, jedna pusta karta otwiera się w tle i zamyka, narzędzia poczty odpowiadają.
+W przeglądarce z Twoim codziennym profilem Claude pracuje w jednej własnej karcie, nie dotyka
+Twoich kart i nigdy nie zamyka ani nie restartuje przeglądarki.
 
 ## Portale i praca poza Polską
 
@@ -167,6 +198,13 @@ pracuj.pl i inne), 11 portali globalnych i z pracą zdalną (LinkedIn, Indeed, W
 Lever; wyszukiwarki często je blokują). Toptal i Turing.com są pominięte celowo: to sieci
 weryfikujące kandydatów, a nie listy ofert. CREK przeszukuje tylko portale z tej listy — nie
 szuka nowych.
+
+**Jak głęboko sięga skan**, zależy od tego, co oferuje portal; jest to zapisane per portal
+w `boards.json` (`listing`). Z filtrem czasu publikacji wyniki są zawężane do okna skanu i czytana
+jest cała zawężona lista; przy ścisłym sortowaniu po dacie czytanie kończy się na pierwszej ofercie
+starszej niż okno; bez żadnego z nich (wmieszane oferty promowane albo odświeżone) portal jest
+czytany tak daleko, jak realnie się da, a raport oznacza go jako wyszukiwanie niskiej jakości.
+Raport podaje dla każdego portalu, jaką regułę zastosowano i dlaczego czytanie się skończyło.
 
 **Dodanie portalu jest teoretycznie możliwe, ale nie jest oczywiste.** Sam wpis na liście nie
 wystarczy, bo każdy portal ma swoje szczegóły, które trzeba sprawdzić osobno:
@@ -232,7 +270,8 @@ w nim sekretów** (haseł do portali w `credentials`, loginu do bazy w `db.auth`
 w `db.token`) — a także ogłoszeń, CV i wierszy bazy, z którymi Claude pracuje. Plugin nie wysyła
 niczego nigdzie indziej i nie ma telemetrii. Jeśli jakieś hasło nie może trafić do modelu, nie
 wpisuj go do configu: zostaw wpis bez hasła, a Claude poprosi Cię o zalogowanie, gdy będzie
-trzeba.
+trzeba. Przy dostępie do poczty z pozwoleniem na odczyt kodów do modelu trafiają też wiadomości
+weryfikacyjne, które Claude czyta — tylko one.
 
 ## Ryzyka — regulaminy portali
 
@@ -241,26 +280,32 @@ to przed użyciem:
 
 - **Automatyczne przeglądanie, wypełnianie formularzy i skanowanie może łamać regulaminy stron** —
   portali z ogłoszeniami, ATS-ów i LinkedIn — i skończyć się ograniczeniem albo blokadą konta.
-- **Ochrona przed botami.** `chrome-shared` uruchamia Chrome bez flag automatyzacji. Gdy formularz
-  mimo to uzna zgłoszenie za spam (niewidoczna reCAPTCHA i podobne), Claude ponawia raz, a potem
-  przechodzi na przeglądarkę zapasową: **drugą Twoją przeglądarkę, na osobnym profilu,
-  uruchomioną z portem debugowania** (`browser.cdp_fallback_port`). W praktyce to ona pozwala
-  przejść takie sprawdzenia; to też część, która najłatwiej narusza regulamin strony. Używaj jej
-  świadomie albo wcale. Świeży profil nie ma historii, więc sprawdzenie i tak może go odrzucić —
-  to cena za nieodsłanianie Twojego codziennego profilu (następny punkt).
+- **Ochrona przed botami.** `chrome-shared` uruchamia Chrome bez flag automatyzacji. Gdy strona
+  mimo to pokaże CAPTCHA albo blokadę antybotową, albo formularz uzna zgłoszenie za spam
+  (niewidoczna reCAPTCHA i podobne), Claude jej nie rozwiązuje: przechodzi do następnej
+  przeglądarki z Twojej listy (`browser.browsers`) — zwykle **drugiej Twojej przeglądarki
+  uruchomionej z portem debugowania**. W praktyce to ona pozwala przejść takie sprawdzenia; to też
+  część, która najłatwiej narusza regulamin strony. Używaj jej świadomie albo wcale. Świeży profil
+  nie ma historii, więc sprawdzenie i tak może go odrzucić; codzienny profil przechodzi częściej,
+  za cenę opisaną w następnym punkcie.
 - **Port debugowania otwiera przeglądarkę dla każdego lokalnego programu.** Dopóki przeglądarka
   nasłuchuje na porcie debugowania, każdy proces na Twoim komputerze może nią sterować i czytać
-  każdą stronę, na której jest zalogowana (poczta, bank, wszystko) — bez pytania o hasło. Nigdy nie
-  otwieraj portu na codziennym profilu: uruchom **osobny profil** (`--user-data-dir=<osobny
-  katalog>`, zalogowany tylko tam, gdzie wymaga tego zgłoszenie), trzymaj go **tylko na
-  localhost** (domyślnie; nigdy `--remote-debugging-address=0.0.0.0`) i **zamknij tę przeglądarkę
-  po wysłaniu formularza**.
+  każdą stronę, na której jest zalogowana (poczta, bank, wszystko) — bez pytania o hasło. Lepiej
+  użyj **osobnego profilu** (`--user-data-dir=<osobny katalog>`, zalogowanego tylko tam, gdzie
+  wymaga tego szukanie pracy), trzymaj go **tylko na localhost** (domyślnie; nigdy
+  `--remote-debugging-address=0.0.0.0` — `crek:browsers` ostrzega, gdy port odpowiada w sieci)
+  i zamknij tę przeglądarkę, gdy przestanie być potrzebna. Jeśli mimo to wpiszesz na listę
+  codzienny profil, to Twoja świadoma decyzja: Claude pracuje w nim tylko w jednej własnej karcie.
 - **LinkedIn ostro reaguje na automatyzację** i ogranicza albo wylogowuje podejrzane konta. CREK
   nie wywołuje żadnego API LinkedIn: jego skrypty tylko czytają tekst już otwartych kart LinkedIn
-  i nigdy same nie otwierają stron LinkedIn. Claude czyta LinkedIn w przeglądarce strona po
-  stronie, jak człowiek, i zatrzymuje się przy CAPTCHA, weryfikacji bezpieczeństwa albo
-  ostrzeżeniu (przy skanie najpierw próbuje tego portalu jeszcze raz w przeglądarce zapasowej, jeśli
-  jest uruchomiona, a potem pyta Ciebie). Ogranicz pracę na LinkedIn do minimum.
+  i nigdy same nie otwierają stron LinkedIn. Claude czyta LinkedIn — i każdy inny serwis, na którym
+  działa na Twoim loginie — w przeglądarce jak człowiek: jeden agent naraz w danym serwisie, jedna
+  karta i jedna czynność naraz, zwykłe wyświetlenia stron, przewijanie z losowymi przerwami po kilka
+  sekund. To ogranicza tempo, nie liczbę stron. Zatrzymuje się przy CAPTCHA, weryfikacji
+  bezpieczeństwa albo ostrzeżeniu (przy CAPTCHA albo weryfikacji najpierw próbuje następnej
+  przeglądarki z Twojej listy, a potem pyta Ciebie; ostrzeżenie dotyczące samego konta zatrzymuje
+  go od razu). Nie uruchamiaj innej
+  automatyzacji na LinkedIn, gdy CREK na nim pracuje.
 - **Plugin `linkedin-mcp`** (opcjonalny) to zewnętrzne narzędzie do LinkedIn, które korzysta
   z Twojej sesji przez własną automatyzację przeglądarki. Dotyczy go to samo ryzyko. Przeczytaj
   jego README przed instalacją i nie uruchamiaj go równolegle z inną pracą na LinkedIn.

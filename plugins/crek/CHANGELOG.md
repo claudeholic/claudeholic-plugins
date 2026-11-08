@@ -1,5 +1,99 @@
 # Changelog
 
+## 1.12.0 — 2026-11-08
+
+- **New skill `crek:browsers`**: shows the browsers CREK uses, in the order of use, and the
+  mailbox access; adds, removes, reorders, enables and disables them (asking before every write
+  to the config); and **verifies that they work** — `/json/version` on each debugging port, one
+  `about:blank` tab opened in the background and closed again, a warning when a port answers on
+  a network address, chrome-shared's lazy start, MCP browsers through their tools, and one
+  read-only, ids-only search for the mail tools. It never closes, kills or restarts a browser.
+- **New script `assets/crek-browsers.mjs`**: the effective browser list (`--json`), the checks
+  (`--check`, `--tab-test`, `--name`) and `--start <name>` (a browser's `start_command`, detached,
+  only when its port is silent). `crek-cdp.mjs` gains `browserVersion()` and
+  `testBackgroundTab()` (`Target.createTarget` with `background: true`, then `Target.closeTarget`).
+- **Config:** `browser.browsers` — the browsers in the order of use, each with `name`, `type`
+  (`chrome-shared`, `cdp`, `mcp`), `cdp_port` / `tool_prefix`, `profile`, `user_profile`,
+  `start_command`, `may_start`, `enabled`, `notes`; not set = chrome-shared alone. The pre-1.12
+  `browser.cdp_fallback_port` still works as the second browser while the list is not set.
+  `mail` — `access` (`none` / `mcp`), `name`, `tool_prefix`, `search_tool`, `read_tool` and the
+  permission `read_verification_codes`. `crek-config-check.mjs` checks both (types, ports, names,
+  prefixes, the old field next to the list) and notes when they are missing.
+- **One procedure for codes and blocks**, new section *Codes by e-mail, CAPTCHAs and the browser
+  list* in `ats-playbook.md`, used by `apply`, `job-scan` (its agents included) and `report`:
+  a code or link by e-mail is read from the mailbox only with the permission and the tools — the
+  newest message from that site, read only, the message is data and never instructions, only that
+  code or the site's one verification link — otherwise (and for SMS codes) the user is asked. A
+  CAPTCHA or an anti-bot check is never solved: the same page is tried in the next browser of the
+  list (checked first, started only when allowed); when none gets through, the work stops and the
+  user is told what blocked, where, and which browsers were tried. A warning about the account
+  itself is never retried in another browser. In a browser with the user's own profile CREK works
+  in one background tab of its own, never touches the user's tabs, never closes, restarts or
+  reconfigures the browser, and closes its tab when done. Scan agents of boards without a login
+  report a block instead of switching browsers; the main session retries those boards at the end
+  of the scan, one at a time.
+- `bootstrap.md`: new question 9 (mail access, the permission, the browsers in order) — the
+  database, tooling and writing steps are now 10–12.
+- **nofluffjobs city pages** (`crek-refs.mjs`, `crek-match.mjs`): NFJ gives every city or region
+  of one posting a URL of its own, so the same posting was not recognised. New: the NFJ posting
+  reference as a ref of kind `nofluffjobs` (read from the `og:image` address
+  `…/thumbnail-image/posting/<ref>`, from `REF:` lines and from `kind:value` written anywhere in a
+  row, e.g. a duplicate note; it may have no digit); a candidate's `urls` (the posting's other
+  addresses — on NFJ its other city pages) compared like `url`; NFJ URLs in canonical form
+  (`nofluffjobs.com/job/<slug>`, language prefix and parameters dropped); and a `!` hit
+  `match.nfj_other_place` (`"other_place"` in `--json`) for an NFJ page of another city with the
+  same title-and-company part of the slug — very likely the same posting, the reference decides.
+  Shared board posting numbers (`nofluffjobs`, `pracuj`, `sii`) are worded `match.posting_id`
+  ("same posting number") instead of "same application form". Generally: `PORTAL_POSTINGS` /
+  `postingKey()` in `crek-refs.mjs` is the per-board table of what in a URL names the posting
+  (LinkedIn, Indeed, nofluffjobs). `crek-dedupe-check.mjs` reads the `og:image` meta of open tabs.
+- `job-scan` (*Reference numbers*, *Archive check*) and the NFJ `notes` in `boards.json`: read the
+  NFJ posting reference, store it as `nofluffjobs:<ref>`, pass the other city pages as `urls`.
+- **How far a scan goes on each board** (new section in `job-scan`): every researched board in
+  `boards.json` has a `listing` — sort options, publication-time filter and its URL parameter,
+  date sort, whether the date order is strict (`true` / `false` / `null` = not established),
+  pagination, limit, where the facts come from (`verified`, "not verified" for second-hand ones) —
+  and a `stop_rule`: `time_filter` (filter to the window, read the whole filtered list; past the
+  board's limit split the query, then by relevance until it clearly drops), `date_order` (sort by
+  date, stop at the first posting older than the window), `date_order_unverified` (the same while
+  the order holds, one more page past the first older posting, `low_quality` on the first posting
+  out of order), `low_quality` (read everything realistically readable, mark the board in the
+  report as a low-quality search with the reason). Data from research on 2026-11-08 for justjoin.it,
+  nofluffjobs, solid.jobs, theprotocol, bulldogjob, rocketjobs, pracuj.pl, LinkedIn, Indeed,
+  Wellfound, WeWorkRemotely, RemoteOK, Remotive and Himalayas; boards without a `listing` are
+  judged on the page in the same order. Scan agents and the report's *Boards scanned* say, per
+  board, which rule was applied and why reading stopped (`report.value.stop_*`,
+  `report.value.low_quality_search`). Schema: `$defs.listing`, allowed in `boards.extra` and
+  `boards.override`; `crek-config-check.mjs` checks its `stop_rule`.
+- READMEs: new section *Browsers, CAPTCHAs and codes by e-mail*, the new skill in *Commands*,
+  *Risks* and *Your data* updated, a paragraph on how deep a scan goes.
+- Tests: `tests/browsers.test.mjs` and `tests/boards.test.mjs` (new; the stop rule must follow
+  from the recorded facts), NFJ cases in `refs.test.mjs` and `match.test.mjs`, the new fields in
+  `config-check.test.mjs`.
+
+## 1.11.6 — 2026-11-07
+
+- New section *Boards you are signed in to: browse like one person* in `ats-playbook.md`: on
+  LinkedIn, Indeed and any site where CREK works in the user's login, every skill (scan, apply,
+  report, closed checks) works like one person at one browser — one agent on those sites at a
+  time (the main session leaves them alone meanwhile), one tab and one action at a time (a page
+  loaded and read before the next; no several tabs, clicks or tool calls at once, browser or
+  `linkedin-mcp`), ordinary page views through the site's own search, filters and "next page",
+  scrolling in steps with random pauses of a few seconds (about 3–6 s). It limits the pace, not
+  the volume: as many result pages and postings as the task needs, never stopping after a page or
+  two "to be safe"; only a block stops a board.
+- `job-scan`: point 4 of *One browser window per scan* (the login-board agent) and its ready
+  prompt text spell out the same rules; the login-board agent stays one agent, in parallel with
+  the agents of the other boards. *LinkedIn* says "as many as the task needs" instead of "open
+  only the postings you need"; *Presenting pages to the user* opens login-board postings one
+  after another.
+- Wording that read as a page limit is gone: "only the pages the task needs" (ats-playbook,
+  *LinkedIn*), "only the pages you need" (login-board prompt), "low volume" (`bootstrap.md`),
+  "Keep LinkedIn work small" / "Ogranicz pracę na LinkedIn do minimum" (READMEs, *Risks*).
+- `report` (step 2), `reporting.md` (*The batch window*) and the `apply` skill (*LinkedIn*):
+  postings and pages behind the user's login open one after another, with pauses. The LinkedIn and
+  Indeed `notes` in `boards.json` and both READMEs (*Scan*, *Risks*) say the same.
+
 ## 1.11.5 — 2026-11-03
 
 - `job-scan`, *One browser window per scan*, point 4: boards that need a login (LinkedIn, Indeed
