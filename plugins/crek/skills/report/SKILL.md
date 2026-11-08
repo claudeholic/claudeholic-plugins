@@ -56,28 +56,33 @@ invent a different layout for it.
 
 Default batch: **10**. The user may ask for another size; use it for that batch.
 
-Every posting in the batch is open in the browser, in the batch window (*The batch window* in
-reporting.md), with its tab number in the Tab column:
+Every posting in the batch is open in the browser — the whole batch in one window of its own, in
+the shared logged-in profile, tabs in the table's order with `[N]` growing along it (*The batch
+window* in reporting.md) — with its tab number in the Tab column:
 
 0. **Only when both conditions in reporting.md hold:** the user has verified the current batch (you
    have their ruling on it, or an explicit "close" / "zamknij") **and** asks for the next. Otherwise leave the
    current batch's tabs alone and, if a new list is ready, only say so in one line.
-1. **Close all tabs of the previous batch first** (unless the user asked to keep them) — and every
-   other tab this session or its agents left in that window (postings opened on request, research
-   pages, finished forms, CV previews). Only the user's own tabs stay. After opening the new batch,
-   list the window's tabs and close leftovers before printing.
-2. **Then open the new batch in the batch window** the previous batch used — right after a scan,
-   the scan's window with its anchor. If there is none (no scan in this session, or the window is
-   gone), open one with its own anchor (*The batch window* in reporting.md) and use it for the
-   following batches. One batch = one window, plus the user's regular window only for postings
-   that need their login (LinkedIn, Indeed and the like — shared context, no `isolatedContext`).
-   Those open one after another, never several at once: each loaded, read and made readable
-   before the next, with a pause of a few seconds between them, and no other agent on those
-   sites meanwhile (*Boards you are signed in to* in `../apply/references/ats-playbook.md`).
-   With chrome-shared, open the rest with the batch window's `isolatedContext` and
-   `background: true`, in table order;
-   with raw CDP, focus a tab of that window before `Target.createTarget` so new tabs land there,
-   and verify with `Browser.getWindowForTarget`.
+1. **Open the new batch and close the old one in one step** (unless the user asked to keep the
+   old tabs): `node "${CLAUDE_PLUGIN_ROOT}/assets/crek-batch-tabs.mjs" open --rows - --replace <[N]
+   of every tab this session or its agents left open>` with the rows **in table order** on stdin
+   (`[{"id": …, "url": …}]`). `--replace` takes the previous batch and every other leftover —
+   postings opened on request, research pages, finished forms, CV previews. A scan's anchor and
+   tabs without an `[N]` close with the tool that opened them (`close_page`). Only the user's own
+   tabs stay. Exit 3 means a tab kept landing in another window and nothing was left open: run
+   it again.
+2. **One batch = one window, in table order.** The script opens the first row as a new window and
+   every later row as a background tab at its end, in the shared logged-in profile (no
+   `isolatedContext`): postings that need the user's login (LinkedIn, Indeed and the like) and the
+   rest sit together, never in two windows. It opens the tabs one after another, each loaded
+   before the next, with a random 2–4 s pause after a signed-in board (the pace for showing a
+   batch; browsing them keeps its 3–6 s); no other agent works on
+   those sites meanwhile (*Boards you are signed in to* in `../apply/references/ats-playbook.md`).
+   A row that drops out later (steps 5–6) is closed with `crek-batch-tabs.mjs close --tabs <N>`
+   and its replacement — the next posting in sort order — added with `open --append-to <[N] of
+   the last tab>`; any other change of order opens the batch again from scratch with `--replace`
+   (*Changing a batch that is already open* in reporting.md). Without a CDP port: `new_page`
+   without `isolatedContext`, `background: true`, one row after another in table order.
 3. Make every page readable: dismiss cookie banners ("reject" / "only necessary" first, then
    close / X, "accept" only when there is nothing else) and overlays, reload once on a Cloudflare
    check (see *Presenting pages to the user* in the job-scan skill). A check that stays — a
@@ -89,15 +94,16 @@ reporting.md), with its tab number in the Tab column:
    blocked it and which browsers were tried (*Codes by e-mail, CAPTCHAs and the browser list* in
    `../apply/references/ats-playbook.md`). A page asking for a code or a link by e-mail follows
    the same section.
-4. Re-read the tab numbers right before printing (chrome-shared: the `[N]` title prefix via
-   `list_pages`; batch-window tabs: their position, *Tab numbers* in *The batch window*). Tabs
-   opened by other agents in between do not belong in the table.
+4. Re-read the tab numbers right before printing (the `[N]` title prefix via `list_pages`, or
+   the script's output) and run `node "${CLAUDE_PLUGIN_ROOT}/assets/crek-batch-tabs.mjs" check
+   --tabs <the Tab numbers in table order>`: one window, in table order, nothing else in it. A
+   problem → open the batch again (step 1), never print it as it is. Tabs opened by other agents
+   in between do not belong in the table.
 5. **Check every tab of the batch for closed postings, right before printing** —
    `node "${CLAUDE_PLUGIN_ROOT}/assets/crek-closed-check.mjs" --tabs <all [N] Tab numbers> --config
-   crek.config.json` (read only); batch-window rows, which have no `[N]`, as in *Checks* in *The
-   batch window*. A `closed` posting still `new` is not printed as a row: close
+   crek.config.json` (read only). A `closed` posting still `new` is not printed as a row: close
    its tab, record `status=closed` with the dated `note.closed` note and the evidence,
-   fill its place with the next posting in sort order (open and check it too), and list the
+   fill its place with the next posting in sort order (added at the end, step 2, and checked too), and list the
    closed ones under the table in `report.section.closed`. `unknown` — and `open` judged by the
    script's phrases alone — → read the tab yourself before printing: the phrase list is a fast
    path, a closed posting in other words is still closed (never add phrases anywhere). A
@@ -108,7 +114,7 @@ reporting.md), with its tab number in the Tab column:
 6. **Resolve repeats of applied postings, alongside step 5** — every row with a `!` likely-same
    hit (or a possibly-same-client suspicion) on an entry `applied` / `interview` / `offer` /
    `declined` / `duplicate`: `node "${CLAUDE_PLUGIN_ROOT}/assets/crek-dedupe-check.mjs" --tabs <all
-   [N] Tab numbers> --config crek.config.json --open-earlier`, batch-window rows with `--ids` (read only; compares reference numbers
+   [N] Tab numbers> --config crek.config.json --open-earlier` (read only; compares reference numbers
    in the bodies and where the "Apply" buttons lead). `duplicate` → record `status=duplicate,
    duplicate_of_id=<earlier>` with the dated note and evidence it prints; `in_pipeline` (same
    company + same normalised title as an entry applied to, not provably equal) → status stays,
@@ -124,8 +130,8 @@ Open only postings that have been checked and scored — an unscored posting is 
 ## After the user rules on a batch
 
 The user usually answers with tab numbers: EN "send 3, decline the rest" / PL "3 wyślij, reszta
-odrzuć" — a position in the batch window or an `[N]`, read against the printed table (*Tab numbers*
-in *The batch window*).
+odrzuć" — the `[N]` numbers of the printed table, read against that table, never by counting
+tabs again.
 
 - Postings to send → the `apply` skill, one application each; report results as they come.
   If a posting was already sent, say so instead of sending it twice.
@@ -149,12 +155,16 @@ in *The batch window*).
   is not a request for the next batch, and a request without a ruling on the current one is a
   question to ask, not a reason to close its tabs.
 - **When the review is over** — the last batch is ruled on, the rest is set aside, or the user asks
-  to close — close the batch window's tabs and then its anchor (*When the window closes* in *The
+  to close — close every tab of the batch (`crek-batch-tabs.mjs close --tabs …`) and every other
+  tab or window this session left open, a scan's anchor included (*When the window closes* in *The
   batch window*, reporting.md).
 
 ## Do not
 
 - Do not print a batch with `—` in every Tab cell: that means the tabs were not opened.
+- Do not print a batch split over two windows or with its tabs out of the table's order, and do
+  not add tabs to an open batch out of order — open it again (step 1).
+- Do not leave tabs or windows behind: an old batch, a scan's anchor, research pages.
 - Do not print a batch without the closed check (step 5 above), and never show a closed posting
   as a normal row.
 - Do not print a batch without the repeat check (step 6 above), and never show a repeat of an

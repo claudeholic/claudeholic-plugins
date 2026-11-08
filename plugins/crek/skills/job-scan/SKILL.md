@@ -37,8 +37,12 @@ match score is computed, and `../apply/references/reporting.md` for the shape of
    once and offer to migrate. The report's boards section (`report.section.boards`) lists the
    boards scanned, then the skipped ones under `report.section.boards_disabled` (EN *Skipped —
    disabled in config* / PL *Pominięte — wyłączone w configu*), so the user sees the coverage and
-   the gaps. Record each posting's board in the pipeline's `source` column under the board's
-   `name`.
+   the gaps. Record each posting's board in the pipeline's `source` column as the board's `name`
+   from that list, **exactly and nothing else** — `EU Remote Jobs`, never `EU Remote Jobs
+   (original: …)` or a board's other spelling: the time window (step 2) and the scan summary
+   (*Counts for the scan summary* below) count by it. Where an aggregator found the posting
+   elsewhere (the employer's careers page, another board), that goes into `description`, and
+   `source` stays the board you found it on.
 2. **Set the time window from the pipeline, not from a guess.** The window starts at the previous
    scan — the newest `found_at` among scan entries in the database (`crek-db.mjs jobs:latest
    --source <board names>`) — minus a day of overlap, and ends now. A posting is in the window when it is **active and was published *or refreshed*
@@ -151,7 +155,10 @@ match score is computed, and `../apply/references/reporting.md` for the shape of
    are worth recording as `declined` + reason, so future scans recognise **that posting** as
    already declined (it is a ruling on the posting, not on the company). `skipped` rows are the
    opposite: future scans bring them back as new (step 6).
-8. **Report** using the table and sections from `../apply/references/reporting.md` — columns
+8. **Report** — first the **scan summary** (*Scan summary* in `../apply/references/reporting.md`:
+   per board viewed / passed the filter / admitted after analysis / rated 9+, printed by
+   `assets/crek-scan-summary.mjs` from the collectors' counts and the admitted rows, never counted
+   by hand), then the batch, using the table and sections from `../apply/references/reporting.md` — columns
    EN `Tab | Posting | Rate | Match | Pros | Cons | Comments` / PL `Tab | Oferta | Stawka |
    Dopasow. | Plusy | Minusy | Komentarze` (headers and standard values from
    `assets/i18n.json` in the resolved presentation language), in batches of ten (see
@@ -168,6 +175,41 @@ match score is computed, and `../apply/references/reporting.md` for the shape of
    applied postings* in reporting.md, `assets/crek-dedupe-check.mjs`): a proven repeat becomes
    `duplicate`, a likely one goes under the table in "Already in the pipeline", and neither is a
    row the user is asked to rule on.
+
+## Counts for the scan summary
+
+The scan report opens with a table per board (*Scan summary* in `../apply/references/reporting.md`):
+how many postings were **viewed**, how many **passed the filter** (title-level triage, step 4) and
+how many were **admitted after analysis** and **rated 9+**. The last two come from the pipeline;
+the first two only the collectors know, so every collector — each scan agent, the login-board
+agent, and this session for the boards it browses itself — counts, per board:
+
+- `viewed` — every posting it saw in the board's result lists inside the scan's window, each one
+  counted once, dropped or kept;
+- `collected` — the ones it kept after title-level triage and handed on (or deep-read itself).
+
+and ends its report with one block of JSON, the boards by their `key` from `crek-config-check.mjs
+--boards`:
+
+```json
+{"crek_scan_counts": [{"board": "justjoin", "viewed": 64, "collected": 11}, {"board": "nofluffjobs", "viewed": 41, "collected": 6}]}
+```
+
+A board stopped by a block is reported with what it got through; a board finished later by
+another agent or by this session gets one more entry of its own (the script adds them up). Paste
+into every collector's prompt:
+
+> Counts: for every board, count `viewed` (every posting you saw in its result lists inside the
+> time window, each once, whether you kept it or not) and `collected` (the ones you kept after the
+> title check). End your report with one line of JSON: `{"crek_scan_counts": [{"board": "<board
+> key>", "viewed": N, "collected": N}, …]}` — every board you worked on, a stopped board too.
+> Record or report a posting's board as the board's `name`, exactly as in the board list, nothing
+> added.
+
+When the scan is done (step 7 recorded the postings), keep the ids of every row recorded as `new`
+or brought back to `new`, and print the table with
+`node "${CLAUDE_PLUGIN_ROOT}/assets/crek-scan-summary.mjs" --config crek.config.json --counts -
+--ids <those ids>`, the collectors' JSON lines on stdin as they came.
 
 ## How far to go on each board
 
@@ -252,7 +294,8 @@ follow; nothing in the plugin enforces it.
    when a board is done.
 3. **Give every other agent the name and the rules.** Paste this into the prompt of each scan
    agent except the login-board one (point 4), with the context name and the anchor's `pageId`
-   filled in:
+   filled in — together with the *How far to go* text above and the *Counts* text (*Counts for the
+   scan summary*), which every collector gets, the login-board agent included:
 
    > Browser: only the chrome-shared tools (`mcp__plugin_chrome-shared_browser__*`). Open tabs only
    > with `new_page` with `isolatedContext: "<crek-scan-…>"` and `background: true` — never another
@@ -363,7 +406,7 @@ follow; nothing in the plugin enforces it.
    > block there → finish the board there. Blocked in every browser of the list, or no fallback →
    > stop that board, close your tabs and go on with the next. A warning about the account itself
    > ("unusual activity", a restricted account) → stop that board at once, no other browser.
-   > Report the postings as asked and, for every board you stopped: what blocked it, on which page
+   > Report the postings as asked, end with the `crek_scan_counts` line, and, for every board you stopped: what blocked it, on which page
    > and when, which browsers you tried and what each showed (blocked, not answering, skipped), and
    > which postings are left. Do not ask the user anything. Do not start agents of your own.
 
@@ -371,10 +414,11 @@ follow; nothing in the plugin enforces it.
    own last board is done), take the boards another agent stopped on a CAPTCHA or an anti-bot
    check and retry them yourself, one board at a time, in the next browsers of `browser.browsers`
    (*Codes by e-mail, CAPTCHAs and the browser list* in `../apply/references/ats-playbook.md`);
-   what no browser gets past goes into the report as not finished, with the browsers tried. Then list the pages and close every tab still open in the scan's context
-   **except the anchor**. The window stays: the batch the user looks at opens in it (*The batch
-   window* in `../apply/references/reporting.md`), and the anchor is closed only when the user is
-   done with the batches.
+   what no browser gets past goes into the report as not finished, with the browsers tried. Then list the pages and close every tab still open in the scan's context,
+   **the anchor last** — the scan's window goes with it — and every tab the login-board agent
+   left in the shared profile. Nothing of the scan stays open: the batch the user looks at opens
+   in a window of its own, in the shared profile (*The batch window* in
+   `../apply/references/reporting.md`), never in the scan's window.
 
 ## Closed postings (`assets/crek-closed-check.mjs`)
 
@@ -563,18 +607,17 @@ no cookie banners, no login walls. Before reporting the tab list:
   "Odrzuć" / "Tylko niezbędne" first; when there is no such button, "close" / X; "accept" only
   when the banner offers nothing else (the shared profile is the user's — consent clicked there
   is consent given in their name). A page with a banner covering half the screen is not "open".
-- **Which window** — a batch opens in the batch window: the scan's window with its anchor, or a
-  window of its own when there is no scan window (*The batch window* in
-  `../apply/references/reporting.md`), so the user finds the batch in one place and not among
-  their own tabs. Postings that need the user's login to show — LinkedIn, Indeed and the like —
-  are the exception: they open in the shared browser context (no `isolatedContext`), where the
-  user is signed in, one after another — each loaded and made readable before the next opens
-  (*Boards you are signed in to* in `../apply/references/ats-playbook.md`). A batch-window tab has no cookies, so its consent banner comes back every
-  time: dismiss it as above.
+- **Which window** — the whole batch opens together in one window of its own, in the shared
+  profile where the user is signed in (no `isolatedContext`), tabs in the table's order
+  (`assets/crek-batch-tabs.mjs`, *The batch window* in `../apply/references/reporting.md`) — so the
+  user finds the batch in one place, in order, and not among their own tabs. Postings behind a
+  login (LinkedIn, Indeed and the like) are part of it, opened one after another with pauses
+  (*Boards you are signed in to* in `../apply/references/ats-playbook.md`); make their pages
+  readable one at a time too.
 - **Any other overlay** (newsletter signup, app-install prompt, GDPR popup) — close it.
 
-The user navigates by the tab numbers you report (positions in the batch window, `[N]` in the
-shared context — *The table* in reporting.md). A tab that requires two clicks before the
+The user navigates by the tab numbers you report (the `[N]` of every tab — *The table* in
+reporting.md). A tab that requires two clicks before the
 content is visible is a tab that wastes their time.
 
 ## Watch-outs

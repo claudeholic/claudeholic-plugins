@@ -128,7 +128,8 @@ apply:
 
 **Tabs:** before finishing, list the browser's tabs and close every tab you opened — the posting,
 the form, confirmation pages, CV/PDF previews — unless the form is intentionally left open for the
-user (say so, with its tab number). Leftover tabs end up next to the user's batch.
+user (say so, with its tab number). Leftover tabs end up next to the user's batch — a tab opened in
+the shared profile lands in the window the user last used, often the batch window, after the batch.
 
 ### Accounts on job portals
 

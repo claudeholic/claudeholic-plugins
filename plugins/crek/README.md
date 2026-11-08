@@ -114,7 +114,11 @@ signed in to (LinkedIn, Indeed and the like) go to one agent of their own, which
 one person: one tab and one action at a time, scrolling with pauses of a few seconds — through as
 many result pages and postings as the scan needs, never several at once.
 
-**3. The table.** The first ten postings are open as tabs, and you get:
+**3. The table.** First a short summary of the scan: for every board, how many postings were
+viewed, how many passed the filter, how many were admitted after the analysis and how many scored
+9 or more. Then the first ten postings open together in one browser window of their own — signed
+in, so LinkedIn postings sit next to the rest — with the tabs in the order of the table and their
+numbers growing down the table, and you get:
 
 | Tab | Posting | Rate | Match | Pros | Cons | Comments |
 |---|---|---|---|---|---|---|
@@ -136,7 +140,8 @@ free-text answer (motivation, "in your own words") wait for your approval. The a
 as sent only when the page confirms it. Claude then reports what went where, with which CV and
 rate, and records it in the database.
 
-**6. More postings.** `next 10` closes the old tabs and opens the next batch. `skip the rest` sets
+**6. More postings.** `next 10` opens the next batch in a new window, in order, and closes the
+old tabs and anything else Claude left open. `skip the rest` sets
 the remaining postings aside without a decision (`skipped`) — if a later scan finds them again,
 they come back as new. "Decline" and "skip" differ on purpose.
 
@@ -293,8 +298,10 @@ CREK drives a real browser on sites that do not all welcome automation. Read thi
   If you put your everyday profile on the list anyway, that is your informed choice: Claude then
   works only in one tab of its own there.
 - **LinkedIn is strict about automation** and restricts or logs out accounts it suspects. CREK
-  calls no LinkedIn API: its scripts only read the text of LinkedIn tabs that are already open
-  and never open LinkedIn pages themselves. Claude reads LinkedIn — and any other site it uses in
+  calls no LinkedIn API: its scripts only read the text of LinkedIn tabs that are already open.
+  The one exception is the script that opens a batch for you: it opens LinkedIn postings as
+  ordinary tabs, one at a time with a pause of 2–4 seconds after each, and never reads or
+  clicks them. Claude reads LinkedIn — and any other site it uses in
   your login — in the browser like a person: one agent on it at a time, one tab and one action at
   a time, ordinary page views, scrolling with random pauses of a few seconds. That limits the pace,
   not the number of pages. It stops at a CAPTCHA, a security check or a warning (on a CAPTCHA or

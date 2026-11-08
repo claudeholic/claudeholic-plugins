@@ -115,7 +115,11 @@ jesteś zalogowany (LinkedIn, Indeed i podobne), dostaje jeden osobny agent, kt�
 człowiek: jedna karta i jedna czynność naraz, przewijanie z kilkusekundowymi przerwami — tyle stron
 wyników i ofert, ile potrzeba do skanu, ale nigdy kilka naraz.
 
-**3. Tabela.** Pierwsze dziesięć ofert jest otwartych w kartach, a Ty dostajesz:
+**3. Tabela.** Najpierw krótkie podsumowanie skanu: dla każdego portalu, ile ofert obejrzano, ile
+przeszło filtr, ile dopuszczono po analizie i ile dostało ocenę 9 lub więcej. Potem pierwsze
+dziesięć ofert otwiera się razem w jednym, osobnym oknie przeglądarki — zalogowanym, więc oferty
+z LinkedIn są obok pozostałych — karty w kolejności tabeli, a ich numery rosną w dół tabeli.
+Dostajesz:
 
 | Tab | Oferta | Stawka | Dopasow. | Plusy | Minusy | Komentarze |
 |---|---|---|---|---|---|---|
@@ -136,7 +140,8 @@ odpowiedź opisowa (motywacja, „własnymi słowami”) czekają na Twoją akce
 za wysłane dopiero wtedy, gdy strona to potwierdzi. Potem mówi, co poszło gdzie, z jakim CV
 i jaką stawką, i zapisuje to w bazie.
 
-**6. Kolejne oferty.** `kolejne 10` zamyka stare karty i otwiera następną partię. `pomiń resztę`
+**6. Kolejne oferty.** `kolejne 10` otwiera następną partię w nowym oknie, po kolei, i zamyka
+stare karty oraz wszystko, co Claude zostawił otwarte. `pomiń resztę`
 odkłada pozostałe oferty bez decyzji (`skipped`) — jeśli późniejszy skan znowu je znajdzie, wrócą
 jako nowe. „Odrzuć” i „pomiń” różnią się celowo.
 
@@ -297,8 +302,9 @@ to przed użyciem:
   i zamknij tę przeglądarkę, gdy przestanie być potrzebna. Jeśli mimo to wpiszesz na listę
   codzienny profil, to Twoja świadoma decyzja: Claude pracuje w nim tylko w jednej własnej karcie.
 - **LinkedIn ostro reaguje na automatyzację** i ogranicza albo wylogowuje podejrzane konta. CREK
-  nie wywołuje żadnego API LinkedIn: jego skrypty tylko czytają tekst już otwartych kart LinkedIn
-  i nigdy same nie otwierają stron LinkedIn. Claude czyta LinkedIn — i każdy inny serwis, na którym
+  nie wywołuje żadnego API LinkedIn: jego skrypty tylko czytają tekst już otwartych kart LinkedIn.
+  Jedyny wyjątek to skrypt, który otwiera dla Ciebie partię: otwiera oferty z LinkedIn jako zwykłe
+  karty, po jednej, z przerwą 2–4 sekund po każdej, i nigdy ich nie czyta ani nie klika. Claude czyta LinkedIn — i każdy inny serwis, na którym
   działa na Twoim loginie — w przeglądarce jak człowiek: jeden agent naraz w danym serwisie, jedna
   karta i jedna czynność naraz, zwykłe wyświetlenia stron, przewijanie z losowymi przerwami po kilka
   sekund. To ogranicza tempo, nie liczbę stron. Zatrzymuje się przy CAPTCHA, weryfikacji

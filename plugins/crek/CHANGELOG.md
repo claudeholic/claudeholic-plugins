@@ -1,5 +1,56 @@
 # Changelog
 
+## 1.12.1 — 2026-11-08
+
+- **A batch opens together, in order, and nothing is left behind.** A batch used to be split: the
+  postings without a login in a window of CREK's own (an isolated context, tabs without `[N]`,
+  numbered by position "from the anchor"), the LinkedIn and Indeed ones in the user's main window
+  — and rows added later went to the end, out of the table's order, while the old window and its
+  anchor stayed open. Now the whole batch opens in **one window of its own in the shared,
+  logged-in profile** (no `isolatedContext`), so every tab has its `[N]`; the tabs run in the
+  order of the table's rows and their `[N]` grow in the same order. *The batch window* in
+  `reporting.md` is rewritten: no anchor and no position numbers for batches any more; a row that
+  drops out (closed, a repeat) is closed and its replacement — the next posting in sort order —
+  added at the end; any other change of order opens the batch again from scratch, never appended
+  out of order. Switching batches closes the previous batch and every other tab or window the
+  session left open (research pages, forms, CV previews, a scan's anchor); when the review is
+  over, the batch's tabs are closed and its window goes with them.
+- **New script `assets/crek-batch-tabs.mjs`** does it deterministically: `open --rows` (the rows
+  in table order) opens the first row as a new window (`Target.createTarget` with `newWindow`)
+  and every later row as a background tab of that window; after every tab it checks the window
+  it landed in (`Browser.getWindowForTarget`) and opens a stray once more after bringing the batch
+  window forward, otherwise closes everything it opened and exits 3. Tabs open one after another,
+  each loaded before the next, with a random 2–4 s pause after a board the user is signed in to
+  (LinkedIn, Indeed, `--paced-hosts`) — the pace for showing a batch only; scanning and reading
+  those boards keep their 3–6 s; pages are not read, clicked or scripted. `--replace`
+  closes the old tabs once the new ones are open, `--append-to N` adds a replacement at the end of
+  the batch's window, `check --tabs` (table order) reports a batch spread over windows, out of
+  order or with another tab in its window (exit 4), and `close --tabs` closes tabs by `[N]`,
+  never the browser's last one.
+- `job-scan`: at the end of a scan the anchor is closed too (last), with the scan's window and
+  every tab the login-board agent left; the batch never opens in the scan's window. *Presenting
+  pages to the user* and the `report` skill (steps 1, 2, 4–6, *After the user rules*, *Do not*)
+  say the same; the closed and repeat checks run with `--tabs` on every row again.
+- The ats-playbook (*LinkedIn*) and both READMEs (*Risks*) name the batch opener as the one script
+  that opens LinkedIn pages — as ordinary tabs, one at a time with a 2–4 s pause, never read or clicked
+  by it. The READMEs describe the new batch window (steps 3 and 6).
+- **Scan summary** (new section in `reporting.md`): a finished scan opens its report with a table
+  per board — *Board*, *Viewed*, *Passed the filter*, *Admitted after analysis*, *Rated 9+* (PL
+  *Portal*, *Obejrzane*, *Przeszły filtr*, *Dopuszczone po analizie*, *Ocena 9+*), with a total
+  line; new i18n keys `report.section.scan_summary`, `report.col.board`, `report.col.viewed`,
+  `report.col.collected`, `report.col.admitted`, `report.col.top`, `report.value.total` (also in
+  the web app's copy).
+- **New script `assets/crek-scan-summary.mjs`** prints that table from the collectors' counts
+  (`--counts`: `{"crek_scan_counts": [{"board", "viewed", "collected"}]}` per agent, boards by key
+  or name, a board reported twice summed) and the admitted rows (`--ids`, their `source` and
+  `match_score` read from the pipeline). It warns about a `source` that is not a board's name, a
+  board without counts and impossible counts; `--json` too.
+- `job-scan`: new section *Counts for the scan summary* — every collector (scan agents, the
+  login-board agent, the main session for its own boards) counts per board what it viewed and what
+  passed the title check and ends its report with the `crek_scan_counts` JSON line; the ready
+  prompt texts say so. Step 1: a posting's `source` is the board's `name` exactly, nothing added
+  (an aggregator's original source goes into `description`). Step 8 prints the summary first.
+
 ## 1.12.0 — 2026-11-08
 
 - **New skill `crek:browsers`**: shows the browsers CREK uses, in the order of use, and the

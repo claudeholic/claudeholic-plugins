@@ -207,7 +207,11 @@ site sees the user's account, and an account that loads pages in parallel looks 
 - **No LinkedIn API, no scripts against LinkedIn.** CREK calls no LinkedIn endpoint of its own
   (the internal web API included): without the MCP tools, LinkedIn is read and clicked through
   like a person would — one tab and one page at a time, with pauses (*Boards you are signed in
-  to* above), as many pages as the task needs. A missing
+  to* above), as many pages as the task needs. The one script that opens LinkedIn pages is the
+  batch opener, `crek-batch-tabs.mjs` (*The batch window* in `reporting.md`): it opens a batch's
+  postings as ordinary tabs, exactly as `new_page` does, one at a time, each loaded before the
+  next, with a random 2–4 s pause after each (the pace for showing a batch only; browsing and
+  reading keep the 3–6 s above) — and never reads, clicks or scripts them. A missing
   session is handled as above; on a CAPTCHA, a security check or a warning, stop and tell the user
   (never solve or click through it on your own). A CAPTCHA or an anti-bot check first goes through
   the browser list (*Codes by e-mail, CAPTCHAs and the browser list* above; a login page in another
