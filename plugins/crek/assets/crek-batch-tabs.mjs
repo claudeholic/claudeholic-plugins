@@ -25,8 +25,9 @@
  *     board the user is signed in to (LinkedIn, Indeed, --paced-hosts) the script waits a random
  *     2–4 s (the pace for showing a batch; browsing and reading those boards keep the 3–6 s of
  *     ats-playbook, *Boards you are signed in to*). A tab is opened
- *     exactly as the browser tools open one; the page is not navigated, clicked or scripted, and no
- *     site API is called;
+ *     exactly as the browser tools open one; the page is not navigated or clicked, and no site API
+ *     is called. The only thing run in a tab is the load check: `document.readyState` through
+ *     Runtime.evaluate over the tab's CDP session — the page's content is never read;
  *   - --append-to N adds rows at the end of the window that holds tab [N] (a replacement for a row
  *     that dropped out: it sorts after every row, so the order holds);
  *   - --replace closes the listed tabs once the new ones are all open (the previous batch, leftovers).

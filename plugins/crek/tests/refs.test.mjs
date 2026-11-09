@@ -129,6 +129,29 @@ test('nofluffjobs: the posting reference is read from its og:image, the REF: lin
   assert.ok(POSTING_ID_KINDS.has('nofluffjobs') && POSTING_ID_KINDS.has('pracuj') && !POSTING_ID_KINDS.has('greenhouse'));
 });
 
+test('nofluffjobs: only a real posting reference (8 letters and digits) counts', () => {
+  // a slug that starts with an 8-letter word is not a reference
+  assert.deepEqual(urlRefs('https://nofluffjobs.com/api/joboffers/platform-engineer-acme-warszawa'), []);
+  assert.deepEqual(urlRefs('https://nofluffjobs.com/api/joboffers/software_engineer'), []);
+  assert.deepEqual(urlRefs('https://nofluffjobs.com/api/joboffers/platform'), []); // a lowercase word, no digit
+  assert.deepEqual(urlRefs('https://nofluffjobs.com/pl/thumbnail-image/posting/QX7KD2PA-x'), []);
+  // the real reference in those addresses still counts, at the end or before / ? # and quotes
+  assert.deepEqual(urlRefs('https://nofluffjobs.com/api/joboffers/QX7KD2PA?salaryCurrency=PLN').map(fmtRef), ['nofluffjobs:QX7KD2PA']);
+  assert.deepEqual(urlRefs('<meta property="og:image" content="https://nofluffjobs.com/thumbnail-image/posting/ZKWPTRMB">').map(fmtRef),
+    ['nofluffjobs:ZKWPTRMB']);
+  // kind:value with any word is not a reference
+  for (const t of ['nofluffjobs:devops', 'REF: nofluffjobs:devops', 'notes: nofluffjobs:platform, nofluffjobs:PLATFORMS',
+    'nofluffjobs:QX7KD2PA9', 'nofluffjobs:QX7-KD2PA']) {
+    assert.deepEqual(extractRefs(t), [], t);
+  }
+  assert.deepEqual(explicitRefs('nofluffjobs:devops'), []);
+  assert.deepEqual(explicitRefs(['nofluffjobs:frontend', 'nofluffjobs:PLATFORM2X']).map(fmtRef), []);
+  // real references: capitals, letters only or with digits; with a digit also lowercased
+  assert.deepEqual(extractRefs('see nofluffjobs:ZKWPTRMB.').map(fmtRef), ['nofluffjobs:ZKWPTRMB']);
+  assert.deepEqual(explicitRefs(['nofluffjobs:QX7KD2PA', 'nofluffjobs:qx7kd2pa']).map(fmtRef), ['nofluffjobs:QX7KD2PA']);
+  assert.deepEqual(extractRefs('REF: nofluffjobs:qx7kd2pa').map(fmtRef), ['nofluffjobs:qx7kd2pa']);
+});
+
 test('postingKey / canonicalUrl: LinkedIn, Indeed and nofluffjobs reduce to the posting address', () => {
   assert.deepEqual(postingKey('https://pl.linkedin.com/jobs/view/devops-at-acme-4100000001?trk=x'),
     { portal: 'linkedin', id: '4100000001', canonical: 'linkedin.com/jobs/view/4100000001' });

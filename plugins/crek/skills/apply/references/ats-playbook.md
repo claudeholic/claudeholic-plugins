@@ -211,7 +211,9 @@ site sees the user's account, and an account that loads pages in parallel looks 
   batch opener, `crek-batch-tabs.mjs` (*The batch window* in `reporting.md`): it opens a batch's
   postings as ordinary tabs, exactly as `new_page` does, one at a time, each loaded before the
   next, with a random 2–4 s pause after each (the pace for showing a batch only; browsing and
-  reading keep the 3–6 s above) — and never reads, clicks or scripts them. A missing
+  reading keep the 3–6 s above). On each tab it only checks that the page has loaded
+  (`document.readyState` over the tab's CDP session); it never reads the page's content or clicks
+  anything. A missing
   session is handled as above; on a CAPTCHA, a security check or a warning, stop and tell the user
   (never solve or click through it on your own). A CAPTCHA or an anti-bot check first goes through
   the browser list (*Codes by e-mail, CAPTCHAs and the browser list* above; a login page in another

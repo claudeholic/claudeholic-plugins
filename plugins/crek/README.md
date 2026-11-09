@@ -300,13 +300,14 @@ CREK drives a real browser on sites that do not all welcome automation. Read thi
 - **LinkedIn is strict about automation** and restricts or logs out accounts it suspects. CREK
   calls no LinkedIn API: its scripts only read the text of LinkedIn tabs that are already open.
   The one exception is the script that opens a batch for you: it opens LinkedIn postings as
-  ordinary tabs, one at a time with a pause of 2–4 seconds after each, and never reads or
-  clicks them. Claude reads LinkedIn — and any other site it uses in
-  your login — in the browser like a person: one agent on it at a time, one tab and one action at
-  a time, ordinary page views, scrolling with random pauses of a few seconds. That limits the pace,
-  not the number of pages. It stops at a CAPTCHA, a security check or a warning (on a CAPTCHA or
-  a check it first tries the next browser on your list, then asks you; a warning about the
-  account itself stops it at once).
+  ordinary tabs, one at a time with a pause of 2–4 seconds after each. On each tab it only checks
+  that the page has finished loading (it asks the page for `document.readyState` over the
+  debugging port); it never reads the page's content or clicks anything. Claude reads LinkedIn —
+  and any other site it uses in your login — in the browser like a person: one agent on it at a
+  time, one tab and one action at a time, ordinary page views, scrolling with random pauses of a
+  few seconds. That limits the pace, not the number of pages. It stops at a CAPTCHA, a security
+  check or a warning (on a CAPTCHA or a check it first tries the next browser on your list, then
+  asks you; a warning about the account itself stops it at once).
   Do not do other automated LinkedIn work while CREK is on it.
 - **The `linkedin-mcp` plugin** (optional) is a third-party LinkedIn tool that uses your LinkedIn
   session through its own browser automation. The same risk applies. Read its README before

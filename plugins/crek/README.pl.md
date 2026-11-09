@@ -304,7 +304,9 @@ to przed użyciem:
 - **LinkedIn ostro reaguje na automatyzację** i ogranicza albo wylogowuje podejrzane konta. CREK
   nie wywołuje żadnego API LinkedIn: jego skrypty tylko czytają tekst już otwartych kart LinkedIn.
   Jedyny wyjątek to skrypt, który otwiera dla Ciebie partię: otwiera oferty z LinkedIn jako zwykłe
-  karty, po jednej, z przerwą 2–4 sekund po każdej, i nigdy ich nie czyta ani nie klika. Claude czyta LinkedIn — i każdy inny serwis, na którym
+  karty, po jednej, z przerwą 2–4 sekund po każdej. Na każdej karcie sprawdza tylko, czy strona
+  skończyła się ładować (pyta stronę o `document.readyState` przez port debugowania); nigdy nie
+  czyta jej treści i niczego nie klika. Claude czyta LinkedIn — i każdy inny serwis, na którym
   działa na Twoim loginie — w przeglądarce jak człowiek: jeden agent naraz w danym serwisie, jedna
   karta i jedna czynność naraz, zwykłe wyświetlenia stron, przewijanie z losowymi przerwami po kilka
   sekund. To ogranicza tempo, nie liczbę stron. Zatrzymuje się przy CAPTCHA, weryfikacji

@@ -41,8 +41,19 @@ export function normRef(value) {
 /** Kinds that are a board's own number of the posting, not an application-form id. */
 export const POSTING_ID_KINDS = new Set(['nofluffjobs', 'pracuj', 'sii']);
 
-// Kinds whose values may have no digit (every other ref needs one, or "Reference: none" would count).
-const NO_DIGIT_KINDS = new Set(['nofluffjobs']);
+/**
+ * The nofluffjobs posting reference: exactly 8 letters and digits ("QX7KD2PA"). It may have no digit
+ * ("ZKWPTRMB"), but then only as NFJ writes it, in capitals — otherwise any 8-letter word would do
+ * ("nofluffjobs:platform", the start of an `api/joboffers/platform-engineer-…` slug).
+ */
+export function isNfjRef(raw) {
+  const s = String(raw ?? '');
+  return /^[A-Z0-9]{8}$/.test(s) || (/^[A-Za-z0-9]{8}$/.test(s) && /\d/.test(s));
+}
+
+// Kinds with a format of their own: it decides instead of the general rule (every other ref needs a
+// digit, or "Reference: none" would count).
+const KIND_FORMATS = { nofluffjobs: isNfjRef };
 
 /** Short purely numeric ids (Traffit form 48213, a site id like 10042, darize 4321) collide across tenants. */
 export function isWeakRef(ref) {
@@ -75,7 +86,8 @@ const URL_RULES = [
   ['hrappka', /hrappka\.pl\/oferta\/[^/\s]+\/(\d+)/gi],
   ['deel', /jobs\.deel\.com\/[^/\s]+\/job-details\/([0-9a-f-]{36})/gi],
   // nofluffjobs: the posting reference, on the page's og:image and in its own data links.
-  ['nofluffjobs', /nofluffjobs\.com\/(?:[a-z]{2}\/)?(?:thumbnail-image\/posting|api\/joboffers)\/([a-z0-9]{8})(?![a-z0-9])/gi],
+  // The reference is the whole path segment: a slug that merely starts with 8 letters is not one.
+  ['nofluffjobs', /nofluffjobs\.com\/(?:[a-z]{2}\/)?(?:thumbnail-image\/posting|api\/joboffers)\/([a-z0-9]{8})(?![a-z0-9_-])/gi],
 ];
 
 // "greenhouse:7712345", "nofluffjobs:QX7KD2PA" written anywhere in a text — the REF: line format,
@@ -111,7 +123,9 @@ function cleanValue(v) {
 
 function push(out, seen, kind, raw) {
   const value = normRef(raw);
-  if (!value || value.length < 3 || (!/\d/.test(value) && !NO_DIGIT_KINDS.has(kind))) return;
+  if (!value || value.length < 3) return;
+  const format = Object.hasOwn(KIND_FORMATS, kind) ? KIND_FORMATS[kind] : null;
+  if (format ? !format(String(raw).trim()) : !/\d/.test(value)) return;
   const key = `${kind}|${value}`;
   if (seen.has(key)) return;
   seen.add(key);

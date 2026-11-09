@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.12.2 — 2026-11-09
+
+- **No false nofluffjobs posting references** (`crek-refs.mjs`). The NFJ reference is exactly 8
+  letters and digits (`QX7KD2PA`, or letters only in capitals, `ZKWPTRMB`). The URL pattern took
+  the first 8 characters of any slug, so `https://nofluffjobs.com/api/joboffers/platform-engineer-acme-warszawa`
+  gave `nofluffjobs:platform` — two postings whose slugs start with the same 8-letter word
+  (`software-`, `platform-`, `frontend-`) shared a ref, a hard `!!` duplicate. Now the reference
+  must be the whole path segment. And `kind:value` text took any word for `nofluffjobs` (the
+  no-digit exception): a note saying `nofluffjobs:devops` made a ref. Now every `nofluffjobs` ref —
+  from a URL, a `REF:` line, `kind:value` text or `ref` / `refs` given to `crek-match` — must have
+  the reference's format: 8 characters, in capitals when it has no digit (`isNfjRef()`). New tests
+  in `refs.test.mjs` for both false cases and the real references.
+- **Docs: what the batch opener does on a tab.** README (EN / PL, *Risks*), the header of
+  `crek-batch-tabs.mjs`, `ats-playbook.md` and `reporting.md` said the script never reads or
+  scripts the tabs it opens. It does attach to every tab, LinkedIn included, and evaluates
+  `document.readyState` to wait for the page to load. The text now says so: it only checks that the
+  page has loaded, never reads the page's content and never clicks. The script is unchanged.
+
 ## 1.12.1 — 2026-11-08
 
 - **A batch opens together, in order, and nothing is left behind.** A batch used to be split: the

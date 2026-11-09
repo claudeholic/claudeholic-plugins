@@ -175,8 +175,9 @@ first 10", postings opened on request.
   open one after another, each loaded before the next, with a random 2–4 s pause after a board the
   user is signed in to (more such boards with `--paced-hosts`) — the pace for showing a batch;
   browsing and reading those boards keep the 3–6 s of *Boards you are signed in to* in
-  `ats-playbook.md`. It opens the pages as the browser tools do and never reads, clicks or scripts
-  them, LinkedIn included. `--replace` closes the listed tabs once the new batch is open — the
+  `ats-playbook.md`. It opens the pages as the browser tools do; on each tab, LinkedIn included, it
+  only checks that the page has loaded (`document.readyState` over the tab's CDP session) and never
+  reads the page's content or clicks anything. `--replace` closes the listed tabs once the new batch is open — the
   previous batch and every leftover of this session; never a tab the user opened. It prints `pos |
   [N] | #id | url` per row (`--json` too) and checks the result itself; the Tab column comes from
   its `[N]`. No CDP port (chrome-shared not running) → open the rows with `new_page` without
