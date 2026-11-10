@@ -29,6 +29,7 @@ import { resolve, dirname, join, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { browserProblems } from './crek-browsers.mjs';
+import { agentProblems } from './crek-agents.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -383,6 +384,13 @@ if (!language) {
 // Browsers in the order of use and mail access (added in 1.12): optional, checked in crek-browsers.mjs.
 {
   const p = browserProblems(cfg);
+  errors.push(...p.errors);
+  warnings.push(...p.warnings);
+  notes.push(...p.notes);
+}
+// The model of CREK's agents (added in 1.12.3): optional, checked in crek-agents.mjs.
+{
+  const p = agentProblems(cfg);
   errors.push(...p.errors);
   warnings.push(...p.warnings);
   notes.push(...p.notes);

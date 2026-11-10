@@ -831,6 +831,33 @@
         }
       }
     },
+    "agents": {
+      "type": "object",
+      "description": "The model CREK's agents run on (added in 1.12.3). The skills start their agents — in a scan the collecting agents, the login-board agent and the deep-read and scoring agents — as CREK's own agent types (the plugin's agents/ directory), with the model from here; assets/crek-agents.mjs turns this block into the agent type and model for each role. The main session keeps the model the user picked. Not set: every role on sonnet, the newest Sonnet.",
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "$ref": "#/$defs/agent_model",
+          "description": "Model of every CREK agent role, unless agents.roles sets one differently. Default: sonnet (the newest Sonnet)."
+        },
+        "roles": {
+          "type": "object",
+          "description": "A different model for one role. Roles: collector — the scan agents on boards without a login; login_board — the one scan agent on the boards behind the user's login (LinkedIn, Indeed); assessor — the agents that deep-read and score shortlisted postings.",
+          "additionalProperties": false,
+          "properties": {
+            "collector": {
+              "$ref": "#/$defs/agent_model"
+            },
+            "login_board": {
+              "$ref": "#/$defs/agent_model"
+            },
+            "assessor": {
+              "$ref": "#/$defs/agent_model"
+            }
+          }
+        }
+      }
+    },
     "credentials": {
       "type": "object",
       "description": "Accounts on job portals and ATS tenants, one entry per portal (key: portal name, e.g. pracuj_pl, or <ats>_<company>, e.g. workday_acme). Passwordless and unknown-password accounts are recorded too. This file must stay out of version control and chmod 600.",
@@ -962,6 +989,17 @@
           "type": "string"
         }
       }
+    },
+    "agent_model": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@-]*(\\[1m\\])?$",
+      "description": "A model as Claude Code's --model takes it. An alias — sonnet, opus, haiku, fable — follows the newest version of that family on the user's provider (on the Anthropic API sonnet is the newest Sonnet; on Bedrock, Vertex or Foundry it can be an older one; when the main session already runs a model of that family, the agent gets that exact model); the session passes it when it starts the agent. A full model ID, e.g. claude-sonnet-5, pins a version; inherit means the main session's model. Claude Code takes these two only from an agent definition, so crek-agents.mjs --sync writes the role's definition into the project's .claude/agents/ (crek-<role>.md) and the agent starts from there; the first time that directory is created, Claude Code needs a restart to see it. CLAUDE_CODE_SUBAGENT_MODEL_FORCE in the environment overrides all of this.",
+      "examples": [
+        "sonnet",
+        "claude-sonnet-5",
+        "opus",
+        "inherit"
+      ]
     }
   }
 }

@@ -20,6 +20,30 @@ The pipeline is read and written only through `assets/crek-db.mjs` (any `db.back
 Two references govern the output and are not optional: `../apply/references/scoring.md` for how a
 match score is computed, and `../apply/references/reporting.md` for the shape of the report.
 
+## Agents and their model
+
+A scan may run in this session alone or split across agents. Every agent it starts is one of
+CREK's own agent types, one per role, so that it runs on the model the user set in the config
+(`agents` in `crek.config.json`; not set — the plugin's default), not on this session's model:
+
+| Role | Who | Where in this skill |
+|---|---|---|
+| `collector` | the scan agents on boards without a login | point 3 of *One browser window per scan* |
+| `login_board` | the one agent on the boards behind the user's login | point 4 there |
+| `assessor` | the agents that deep-read and score shortlisted postings | step 6 |
+
+Before the first agent of a scan, run
+`node "${CLAUDE_PLUGIN_ROOT}/assets/crek-agents.mjs" --config crek.config.json --sync`. For each
+role it prints `subagent_type` and `model`: start every agent of that role with the Agent tool's
+`subagent_type` and `model` set to those two values — leave `model` out when it is `null` (the
+agent type carries its model then). Never start a CREK agent as another type
+(`general-purpose`, a fork, an agent of another plugin) and never with a model of your own choice
+— unless the user asks for another model in this session. When the output says `"restart_needed":
+true`, or the Agent tool does not know the `subagent_type`, use that role's `fallback` instead
+(the same two fields) and tell the user once that the model from the config takes effect after
+restarting Claude Code. The agent types hold only the role; the texts to paste below still go
+into every prompt in full.
+
 ## Procedure
 
 1. **Pick the boards: plugin defaults adjusted by the config.** The plugin ships the default
@@ -121,6 +145,29 @@ match score is computed, and `../apply/references/reporting.md` for the shape of
    Only the first is removed; the user decides on the rest — a good role applied to twice is
    better than a good role lost.
 
+   **The deep read in agents.** When the deep read is split across agents, each runs as role
+   `assessor` (*Agents and their model* above) and gets postings from boards without a login only
+   — the postings of LinkedIn, Indeed and the other login boards are the login-board agent's part
+   (point 4 of *One browser window per scan*). The assessor reads, checks and scores; this session
+   decides on the repeats and records (step 7), so it keeps every id for the scan summary. Paste
+   into every assessor's prompt, with the browser text of point 3 and the postings (title,
+   company, URL, board):
+
+   > Deep-read and score these postings (step 6 of crek's job-scan skill, which has the details).
+   > For each: first check that it is still open — the board's closed markers (*Closed postings* in
+   > the job-scan skill); a closed posting is reported as closed with the evidence, not scored.
+   > Otherwise extract the full picture — hiring company vs agency, rate, work mode fine print
+   > ("remote" within one country, hybrid expectations on the benefits page) — and every posting
+   > reference number, in the body and on the apply target (*Reference numbers* in the job-scan
+   > skill). Score it by crek's `skills/apply/references/scoring.md` against `criteria` and
+   > `profile_inventory` in `crek.config.json`: remaining blockers first, then coverage of the
+   > posting's mandatory requirements; list the covered, the partial (and why) and the missing
+   > requirements. Then run `crek-match.mjs` once on all your postings with their `refs` and
+   > `apply_url` (*Archive check* in the job-scan skill) and report its lines for each. Report per
+   > posting: URL, title, company, rate, work mode, refs, apply target, score, the three lists, the
+   > crek-match lines, or closed / blocked with the evidence. Record nothing in the database. Do not
+   > ask the user anything. Do not start agents of your own.
+
    **Previously skipped** (`status=skipped` — set aside without review, no decision; marked `~~`
    / `~` by `crek-match.mjs` instead of `!!` / `!`). A skipped entry is never a reason to drop a
    posting, never a reason to suggest skip, and never "already declined": the posting is
@@ -181,8 +228,8 @@ match score is computed, and `../apply/references/reporting.md` for the shape of
 The scan report opens with a table per board (*Scan summary* in `../apply/references/reporting.md`):
 how many postings were **viewed**, how many **passed the filter** (title-level triage, step 4) and
 how many were **admitted after analysis** and **rated 9+**. The last two come from the pipeline;
-the first two only the collectors know, so every collector — each scan agent, the login-board
-agent, and this session for the boards it browses itself — counts, per board:
+the first two only the collectors know, so every collector — each collecting agent, the
+login-board agent, and this session for the boards it browses itself — counts, per board:
 
 - `viewed` — every posting it saw in the board's result lists inside the scan's window, each one
   counted once, dropped or kept;
@@ -256,7 +303,8 @@ window (29.10; 41 postings)`, `low-quality search (not strictly by date, no time
 postings read, as far as it realistically went` / PL `filtr czasu 7 dni: przeczytana cała zawężona
 lista (64 ofert)`, …). Scan agents report the same for each of their boards: the rule, the
 filter or sort used, how many postings they read and why they stopped (the end of the filtered
-list, the first older posting, the board's limit, a block). Paste into every scan agent's prompt:
+list, the first older posting, the board's limit, a block). Paste into every collector's prompt,
+the login-board agent's included:
 
 > How far to go on each board: its `listing.stop_rule` from `crek-config-check.mjs --boards`
 > (*How far to go on each board* in crek's job-scan skill). `time_filter` — filter to the
@@ -293,9 +341,11 @@ follow; nothing in the plugin enforces it.
    `pageId`s you opened (the `new_page` reply marks the new tab `[selected]`), and close your tabs
    when a board is done.
 3. **Give every other agent the name and the rules.** Paste this into the prompt of each scan
-   agent except the login-board one (point 4), with the context name and the anchor's `pageId`
-   filled in — together with the *How far to go* text above and the *Counts* text (*Counts for the
-   scan summary*), which every collector gets, the login-board agent included:
+   agent except the login-board one (point 4) — the collecting agents (role `collector`) and the
+   deep-read agents of step 6 (role `assessor`, *Agents and their model* above) — with the context
+   name and the anchor's `pageId` filled in; for every collector together with the *How far to go*
+   text above and the *Counts* text (*Counts for the scan summary*), which every collector gets,
+   the login-board agent included:
 
    > Browser: only the chrome-shared tools (`mcp__plugin_chrome-shared_browser__*`). Open tabs only
    > with `new_page` with `isolatedContext: "<crek-scan-…>"` and `background: true` — never another
@@ -312,7 +362,8 @@ follow; nothing in the plugin enforces it.
    context opens a new one: that tab becomes the anchor. Do not open a second window next to it.
 4. **Boards that need a login: one agent of their own, in parallel with the others.** LinkedIn,
    Indeed and any other board where the scan needs the user's cookies or session go to **one**
-   separate agent, the login-board agent, started together with the other scan agents (when the
+   separate agent, the login-board agent (role `login_board`, *Agents and their model* above),
+   started together with the other scan agents (when the
    rest of the scan runs in this session alone, start it alongside your own boards). It is the
    only one that touches LinkedIn and Indeed in this scan: no other agent does, and the main
    session leaves them alone while it runs. It works in the default context (no

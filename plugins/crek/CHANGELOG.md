@@ -1,5 +1,42 @@
 # Changelog
 
+## 1.12.3 — 2026-11-10
+
+- **CREK's agents run on the model set in the config, not on the main session's.** The plugin now
+  ships its own agent types (`agents/`): `crek:collector` (the scan agents on boards without a
+  login), `crek:login-board` (the one scan agent on the boards behind the user's login) and
+  `crek:assessor` (the agents that deep-read and score shortlisted postings). They used to be
+  whatever agent the session picked, on whatever model it picked — a deep read could run on the
+  main session's model. Each definition holds only the role and the rules that hold
+  whatever the prompt says (never ask the user, never start agents of its own, enforced by
+  `disallowedTools: Agent`; no login boards for the collector and the assessor, the `crek_scan_counts` line); the
+  scan's rules still come in full with the texts the skill pastes into every prompt.
+- **New config block `agents`** (`crek.schema.json`): `agents.model` for every role,
+  `agents.roles.collector` / `login_board` / `assessor` for one role. Not set: `sonnet`, the newest
+  Sonnet. An alias (`sonnet`, `opus`, `haiku`, `fable`) follows the newest version of that family;
+  a full model ID (e.g. `claude-sonnet-5`) pins one version, and `inherit` is the main session's
+  model. `crek-config-check.mjs` checks the block (unknown fields and roles, a value that is not a
+  model name).
+- **New script `assets/crek-agents.mjs`** turns the block into what the session passes when it
+  starts an agent: `subagent_type` and `model` per role. Claude Code takes a model at that point
+  only as an alias; a full model ID or `inherit` works only in an agent definition, so for those
+  `--sync` writes a copy of the role's definition with that model into the project's
+  `.claude/agents/` (`crek-collector.md`, `crek-login-board.md`, `crek-assessor.md`, marked as
+  generated), rewrites it when the model or the plugin changes and removes it when the role is
+  back on an alias; a file of the same name it did not write is never touched. When it has to
+  create `.claude/agents/`, it says `restart_needed` (a running Claude Code does not watch a
+  directory created after it started) and gives each role a `fallback` until then.
+- `job-scan`: new section *Agents and their model* — run `crek-agents.mjs --sync` before the first
+  agent and start every agent with the type and model it prints, never another type or a model
+  of the session's own choice. Point 3 and 4 of *One browser window per scan* name the roles;
+  step 6 gets *The deep read in agents*: an assessor gets postings from boards without a login
+  only, reads, checks and scores them and records nothing — the main session records (step 7) —
+  with a text to paste into its prompt. The bootstrap interview leaves `agents` out unless the
+  user names a model. README (EN / PL, *Configuration*) describes the block.
+- New tests `agents.test.mjs`: the agent files (frontmatter, one per role, no fields Claude Code
+  ignores in plugin agents), no model named in the skills, the plan, the checks, the schema, the
+  project copies and the CLI.
+
 ## 1.12.2 — 2026-11-09
 
 - **No false nofluffjobs posting references** (`crek-refs.mjs`). The NFJ reference is exactly 8

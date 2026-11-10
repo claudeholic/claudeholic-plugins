@@ -362,6 +362,24 @@ CV na dysku; skan i aplikowanie uruchamiają go przed startem. Pola dodane w now
 opcjonalne: starszy config dalej działa, a sprawdzenie mówi, co nowego. Config możesz edytować
 sam albo poprosić o to Claude.
 
+**Model agentów CREK.** Skan uruchamia swoich agentów — tych, którzy zbierają oferty z portali,
+tego jednego od portali, na których jesteś zalogowany, i tych, którzy czytają oferty dokładnie
+i je oceniają — jako własne typy agentów CREK (`crek:collector`, `crek:login-board`,
+`crek:assessor`, w `agents/`), na modelu z `agents.model` w configu; `agents.roles` ustawia inny
+model jednej roli. Bez tego pola: najnowszy Sonnet (`sonnet`). Główna sesja zostaje na modelu,
+który wybrałeś.
+
+- Alias — `sonnet`, `opus`, `haiku`, `fable` — oznacza najnowszą wersję tej rodziny u Twojego
+  dostawcy (na Bedrock, Vertex czy Foundry może to być starsza), a gdy główna sesja działa już na
+  modelu tej rodziny, agenci dostają dokładnie ten model.
+- Pełne ID modelu (np. `claude-sonnet-5`) przypina jedną wersję; `inherit` to model głównej
+  sesji. Claude Code przyjmuje je tylko z definicji agenta, więc CREK zapisuje definicję roli,
+  z tym modelem, w `.claude/agents/` projektu (`crek-collector.md` itd., oznaczone jako
+  wygenerowane; `assets/crek-agents.mjs --sync`, uruchamiany przez skan) i usuwa ją, gdy wrócisz
+  do aliasu. Jeśli przy tym powstaje katalog `.claude/agents/`, zmiana działa po ponownym
+  uruchomieniu Claude Code; do tego czasu agenci działają na aliasie rodziny.
+- `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` w Twoim środowisku nadpisuje to wszystko.
+
 ## Język
 
 Raporty, szkice i wiadomości idą w języku z `presentation.language` — kod (`pl`, `en`) albo nazwa

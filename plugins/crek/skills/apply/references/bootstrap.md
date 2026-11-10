@@ -209,6 +209,10 @@ See `assets/crek.schema.json` for every field, with a note on each explaining wh
   profile on the list is the user's informed choice, never a default.
 - `browser.pdf_command` — resolve once with `command -v` from `google-chrome`,
   `google-chrome-stable`, `chromium`, `chromium-browser`, `brave-browser` and store the hit.
+- `agents` — the model of CREK's agents (scan agents, the login-board agent, deep-read agents).
+  Not asked: leave it out — the plugin's default — unless the user names a model for them; then
+  write it to `agents.model` as an alias (the newest of a family) or a full model ID (one fixed
+  version), as `agent_model` in `assets/crek.schema.json` describes.
 
 ## What the config holds, and where it goes
 

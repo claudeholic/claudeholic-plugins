@@ -356,6 +356,23 @@ scans and applications run it before they start. Fields added in later versions 
 older config keeps working, and the check mentions what is new. You can edit the config yourself
 or ask Claude to.
 
+**The model of CREK's agents.** A scan starts its agents — the ones that collect postings on the
+boards, the one on the boards you are signed in to, the ones that deep-read and score — as
+CREK's own agent types (`crek:collector`, `crek:login-board`, `crek:assessor`, in `agents/`), on
+the model in `agents.model` of the config; `agents.roles` sets one role differently. Not set: the
+newest Sonnet (`sonnet`). The main session stays on the model you picked.
+
+- An alias — `sonnet`, `opus`, `haiku`, `fable` — follows the newest version of that family on
+  your provider (on Bedrock, Vertex or Foundry it can be an older one), and when the main session
+  already runs a model of that family, the agents get that exact model.
+- A full model ID (e.g. `claude-sonnet-5`) pins one version; `inherit` is the main session's
+  model. Claude Code takes these only from an agent definition, so CREK writes the role's
+  definition, with that model, into the project's `.claude/agents/` (`crek-collector.md` and so
+  on, marked as generated; `assets/crek-agents.mjs --sync`, run by the scan) and removes it when
+  you go back to an alias. If that creates `.claude/agents/`, the change takes effect after you
+  restart Claude Code; until then the agents run on the family's alias.
+- `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` in your environment overrides all of this.
+
 ## Language
 
 Reports, drafts and messages follow `presentation.language` — a code (`pl`, `en`) or a name
