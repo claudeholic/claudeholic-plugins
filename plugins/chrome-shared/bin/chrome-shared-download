@@ -1,0 +1,159 @@
+#!/usr/bin/env node
+// chrome-shared-download — let the shared Chrome download into a chosen
+// directory, without the "Save as" dialog, while this command runs.
+//
+//   chrome-shared-download --tab N --dir DIR [--count K] [--timeout SEC]
+//
+// N is the tab number the user sees ("[N] " in the tab title). The command
+// finds that tab's browser context (one window per isolatedContext), calls
+// CDP Browser.setDownloadBehavior({behavior: "allow", downloadPath: DIR})
+// for that context only, prints READY, and reports downloads as they finish:
+//
+//   READY context=<id|default> dir=<DIR>
+//   BEGIN <suggested file name> <url>
+//   DONE <absolute file path> <bytes>
+//   CANCELED <suggested file name>
+//
+// It exits after K finished downloads (default 1), or after SEC seconds with
+// no download activity (default 300; exit code 2). Chrome ties the override
+// to this CDP connection: when the command exits, the context is back to
+// Chrome's own download handling. Keep it running for the whole batch.
+//
+// Chrome writes the file under the name the site gives it; an existing file
+// of the same name in DIR is overwritten.
+
+import fs from 'node:fs';
+import path from 'node:path';
+
+const PORT = process.env.CS_CHROME_PORT ?? '9226';
+
+function usage(msg) {
+  if (msg) console.error(`chrome-shared-download: ${msg}`);
+  console.error('usage: chrome-shared-download --tab N --dir DIR [--count K] [--timeout SEC]');
+  process.exit(64);
+}
+
+const args = {count: 1, timeout: 300};
+const argv = process.argv.slice(2);
+for (let i = 0; i < argv.length; i++) {
+  const a = argv[i], v = argv[i + 1];
+  if (a === '--tab') { args.tab = v; i++; }
+  else if (a === '--dir') { args.dir = v; i++; }
+  else if (a === '--count') { args.count = Number(v); i++; }
+  else if (a === '--timeout') { args.timeout = Number(v); i++; }
+  else if (a === '-h' || a === '--help') usage();
+  else usage(`unknown argument: ${a}`);
+}
+if (!/^\d+$/.test(args.tab ?? '')) usage('--tab must be the tab number shown as [N] in the title');
+if (!args.dir) usage('--dir is required');
+if (!(args.count >= 1)) usage('--count must be >= 1');
+if (!(args.timeout > 0)) usage('--timeout must be > 0');
+
+const dir = path.resolve(args.dir);
+fs.mkdirSync(dir, {recursive: true});
+
+let version;
+try {
+  version = await fetch(`http://127.0.0.1:${PORT}/json/version`).then(r => r.json());
+} catch {
+  console.error(`chrome-shared-download: shared Chrome is not running on port ${PORT} — open the page with the browser tools first`);
+  process.exit(1);
+}
+
+const ws = new WebSocket(version.webSocketDebuggerUrl);
+let nextId = 1;
+const pending = new Map();
+function send(method, params = {}) {
+  const id = nextId++;
+  ws.send(JSON.stringify({id, method, params}));
+  return new Promise((resolve, reject) => pending.set(id, {resolve, reject, method}));
+}
+
+const begun = new Map();   // guid -> suggested file name
+let done = 0;
+let idleTimer;
+function armIdle() {
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => {
+    console.log(`TIMEOUT no download activity for ${args.timeout}s (${done}/${args.count} done)`);
+    finish(2);
+  }, args.timeout * 1000);
+}
+let exiting = false;
+function finish(code) {
+  exiting = true;
+  clearTimeout(idleTimer);
+  try { ws.close(); } catch {}
+  // Give the close frame a moment, then exit.
+  setTimeout(() => process.exit(code), 200);
+}
+for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(sig, () => finish(130));
+
+ws.addEventListener('message', ev => {
+  const msg = JSON.parse(ev.data);
+  if (msg.id && pending.has(msg.id)) {
+    const p = pending.get(msg.id);
+    pending.delete(msg.id);
+    if (msg.error) p.reject(new Error(`${p.method}: ${msg.error.message}`));
+    else p.resolve(msg.result);
+    return;
+  }
+  if (msg.method === 'Browser.downloadWillBegin') {
+    const {guid, suggestedFilename, url} = msg.params;
+    begun.set(guid, suggestedFilename);
+    console.log(`BEGIN ${suggestedFilename} ${url.slice(0, 200)}`);
+    armIdle();
+  } else if (msg.method === 'Browser.downloadProgress') {
+    const {guid, state, receivedBytes, filePath} = msg.params;
+    if (!begun.has(guid)) return;
+    armIdle();
+    if (state === 'completed') {
+      const name = begun.get(guid);
+      begun.delete(guid);
+      const file = filePath || path.join(dir, name);
+      // Downloads of other windows (contexts) also report here; count only ours.
+      if (path.dirname(file) !== dir) return;
+      console.log(`DONE ${file} ${receivedBytes}`);
+      if (++done >= args.count) finish(0);
+    } else if (state === 'canceled') {
+      console.log(`CANCELED ${begun.get(guid)}`);
+      begun.delete(guid);
+    }
+  }
+});
+ws.addEventListener('close', () => {
+  if (!exiting) { console.error('chrome-shared-download: connection to Chrome closed'); process.exit(1); }
+});
+
+await new Promise((resolve, reject) => {
+  ws.addEventListener('open', resolve, {once: true});
+  ws.addEventListener('error', () => reject(new Error('cannot connect to Chrome')), {once: true});
+});
+
+try {
+  const {targetInfos} = await send('Target.getTargets');
+  const prefix = `[${args.tab}] `;
+  const tabs = targetInfos.filter(t => t.type === 'page' && t.title.startsWith(prefix));
+  if (tabs.length !== 1) {
+    console.error(`chrome-shared-download: ${tabs.length ? 'more than one tab' : 'no tab'} titled "${prefix}…" — check list_pages`);
+    finish(1);
+  } else {
+    const ctx = tabs[0].browserContextId;
+    const {browserContextIds} = await send('Target.getBrowserContexts');
+    // Contexts created over CDP (isolatedContext windows) are listed; the
+    // shared main window is the default context and takes no id.
+    const isolated = browserContextIds.includes(ctx);
+    await send('Browser.setDownloadBehavior', {
+      behavior: 'allow',
+      downloadPath: dir,
+      eventsEnabled: true,
+      ...(isolated ? {browserContextId: ctx} : {}),
+    });
+    console.log(`READY context=${isolated ? ctx : 'default'} dir=${dir}`);
+    if (!isolated) console.log('WARNING tab is in the shared main window: the user\'s own downloads there also go to DIR while this runs');
+    armIdle();
+  }
+} catch (e) {
+  console.error(`chrome-shared-download: ${e.message}`);
+  finish(1);
+}

@@ -10,6 +10,7 @@ Shared Chrome automation for Claude Code — one browser, many sessions. Linux o
 - **MCP multiplexer** — one shared `chrome-devtools-mcp` engine for all sessions, lightweight stubs per session (~46 MB instead of ~140 MB), routing through a Unix socket and a mux daemon.
 - **Idle shutdown** — the shared engine shuts down after a period with no `tools/call` (default 2 hours, configurable via `CS_ENGINE_IDLE_MS`). The next call starts it again transparently; tabs in Chrome survive engine restarts.
 - **Low memory footprint** — no resident `npx` process, no Google telemetry watchdog, engine installed once into `~/.cache/chrome-shared` and started directly with `node`. A background job keeps the engine up to date.
+- **Downloads without dialogs** — `chrome-shared-download --tab N --dir DIR` makes one window (browser context) save its downloads straight into `DIR` while the command runs (CDP `Browser.setDownloadBehavior`), so a download click never opens the system "Save as" dialog that an agent cannot see. Reports each finished file. See the `chrome-shared-default` skill.
 - **Regular-browser behavior** — Chrome launches without automation markers (`navigator.webdriver = false`, no `--enable-automation`), avoiding CAPTCHA triggers on sites like LinkedIn or claude.ai. This does **not** solve or bypass CAPTCHAs — it merely avoids provoking them.
 
 ## Configuration
@@ -32,7 +33,7 @@ Declared in `plugin.json` as `browser` — tools are available under the
 
 | Skill | Origin |
 |---|---|
-| `chrome-shared-default` | own — mandatory usage rules for the shared browser |
+| `chrome-shared-default` | own — mandatory usage rules for the shared browser, including file downloads |
 | `chrome-devtools` | chrome-devtools-mcp (as-is) |
 | `a11y-debugging` | chrome-devtools-mcp (as-is) |
 | `chrome-devtools-cli` | chrome-devtools-mcp (as-is) |
